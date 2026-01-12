@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: face-attendance-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
