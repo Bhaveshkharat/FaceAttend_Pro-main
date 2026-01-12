@@ -20,7 +20,7 @@ app.use("/api/auth", authRoutes);
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"), { dbName: "attendance_manager" })
+  .then(() => console.log("✅ MongoDB connected"), { dbName: "attendance_managers" })
   .catch((err) => console.error("❌ MongoDB error:", err));
 
 // Routes
