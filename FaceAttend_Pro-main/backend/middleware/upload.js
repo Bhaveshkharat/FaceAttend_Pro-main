@@ -3,7 +3,11 @@ const path = require("path");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "..", "uploads"));
+    // Vercel has a read-only filesystem except for /tmp
+    const uploadPath = process.env.VERCEL
+      ? "/tmp"
+      : path.join(__dirname, "..", "uploads");
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const uniqueName =

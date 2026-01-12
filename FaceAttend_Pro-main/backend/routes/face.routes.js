@@ -6,7 +6,7 @@ const {
 } = require("../controllers/face.controller");
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/faces/" });
+const upload = multer({ dest: process.env.VERCEL ? "/tmp" : "uploads/faces/" });
 
 // REGISTER FACE
 router.post("/register", upload.single("image"), register);
