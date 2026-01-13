@@ -47,8 +47,7 @@
         {
           "cameraPermission": "Allow FaceAttend Pro to access your camera for marking attendance."
         }
-      ],
-      "expo-image-manipulator"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
