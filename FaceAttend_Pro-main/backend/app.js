@@ -20,12 +20,18 @@ app.use("/api/auth", authRoutes);
 // MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 60000, // 60 seconds
-    socketTimeoutMS: 60000,
-    tls: true
+    serverSelectionTimeoutMS: 10000, // 10 seconds
   })
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .then(() => console.log("✅ MongoDB connected successfully"))
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:");
+    console.error(err.message);
+    if (err.message.includes("replica set")) {
+      console.log("💡 Tip: Common fixes for 'replica set' errors on Render:");
+      console.log("   1. Whitelist 0.0.0.0/0 in MongoDB Atlas -> Network Access.");
+      console.log("   2. If using a standalone DB, add ?retryWrites=false to your MONGO_URI.");
+    }
+  });
 
 // Routes
 app.use("/api/face", faceRoutes);
