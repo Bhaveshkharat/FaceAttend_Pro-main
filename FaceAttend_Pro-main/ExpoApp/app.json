@@ -41,11 +41,24 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow FaceAttend Pro to access your camera for marking attendance."
+        }
+      ],
+      "expo-image-manipulator"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c2544751-3f22-41c4-ba24-03b010759772"
+      }
     }
   }
 }
