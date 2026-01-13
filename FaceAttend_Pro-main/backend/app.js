@@ -18,35 +18,14 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", authRoutes);
 // MongoDB Connection
-console.log(`💻 Node Version: ${process.version}`);
-// Safer masking: Keep the protocol and host, hide user:pass
-const uri = process.env.MONGO_URI || "";
-const maskedUri = uri.includes("@")
-  ? uri.split("@")[0].replace(/(\/\/)(.*):(.*)/, "$1****:****") + "@" + uri.split("@")[1]
-  : "UNDEFINED or INVALID";
-
-console.log(`📡 Connecting to MongoDB URI: ${maskedUri}`);
-
-const connectionOptions = {
-  serverSelectionTimeoutMS: 60000,
-  connectTimeoutMS: 60000,
-  socketTimeoutMS: 60000,
-  family: 4,
-};
-
-// If the URI is the long version, it already includes replicaSet etc.
+// MongoDB Connection
 mongoose
-  .connect(uri, connectionOptions)
+  .connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 30000,
+  })
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => {
-    console.error("❌ MongoDB connection error:");
-    console.error(err.message);
-    console.error("Full Error Stack:", err.stack);
-    if (err.message.includes("replica set")) {
-      console.log("💡 Tip: Common fixes for 'replica set' errors on Render:");
-      console.log("   1. Whitelist 0.0.0.0/0 in MongoDB Atlas -> Network Access.");
-      console.log("   2. If using a standalone DB, add ?retryWrites=false to your MONGO_URI.");
-    }
+    console.error("❌ MongoDB connection error:", err.message);
   });
 
 // Routes
