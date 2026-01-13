@@ -22,13 +22,18 @@ const LATE_THRESHOLD = "10:30:00"; // 10:30 PM (Per user request? User said 10:3
 // I'll assume standard office hours: 10:30 AM start, 6:30 PM end.
 // Standards: 10:30 -> 10:30:00. 6:30 PM -> 18:30:00.
 
-// 🕒 HELPER: Get Local Date "YYYY-MM-DD"
+// 🕒 HELPER: Get Local Date "YYYY-MM-DD" in IST (Asia/Kolkata)
 const getLocalDate = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(new Date())
+    .split("/")
+    .reverse()
+    .join("-");
 };
 
 const START_TIME_LIMIT = "10:30:00"; // 10:30 AM
@@ -119,8 +124,14 @@ exports.markAttendanceByFace = async (req, res) => {
     }
 
     const today = getLocalDate();
-    // ✅ FORCE 24H FORMAT: "HH:mm:ss"
-    const now = new Date().toLocaleTimeString("en-GB", { hour12: false });
+    // ✅ FORCE 24H FORMAT in IST: "HH:mm:ss"
+    const now = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date());
 
     let attendance = await Attendance.findOne({
       userId: result.userId,
@@ -360,10 +371,19 @@ exports.getTodayStats = async (req, res) => {
 // ... existing getTodayExceptions ...
 exports.getTodayExceptions = async (req, res) => {
   try {
-    const { date: queryDate } = req.query;
     const today = getLocalDate();
     const targetDate = queryDate || today;
-    const nowMins = timeToMinutes(new Date().toLocaleTimeString("en-GB", { hour12: false }));
+
+    // ✅ Get current time in IST for comparison
+    const nowIST = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date());
+
+    const nowMins = timeToMinutes(nowIST);
     const absentLimitMins = timeToMinutes(ABSENT_TIME_LIMIT);
 
     const employees = await User.find({ role: "employee" });
