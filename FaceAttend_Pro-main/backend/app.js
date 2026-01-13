@@ -28,8 +28,11 @@ console.log(`📡 Connecting to MongoDB URI: ${maskedUri}`);
 
 mongoose
   .connect(uri, {
-    serverSelectionTimeoutMS: 20000,
-    family: 4, // Force IPv4 to avoid Render/Atlas IPv6 resolution issues
+    serverSelectionTimeoutMS: 45000, // 45 seconds
+    connectTimeoutMS: 45000, // 45 seconds
+    socketTimeoutMS: 60000, // 1 minute
+    family: 4, // Force IPv4
+    tls: true, // Explicitly enable TLS for Atlas
   })
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => {
