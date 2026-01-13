@@ -18,6 +18,7 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", authRoutes);
 // MongoDB Connection
+console.log(`💻 Node Version: ${process.version}`);
 // Safer masking: Keep the protocol and host, hide user:pass
 const uri = process.env.MONGO_URI || "";
 const maskedUri = uri.includes("@")
@@ -26,18 +27,21 @@ const maskedUri = uri.includes("@")
 
 console.log(`📡 Connecting to MongoDB URI: ${maskedUri}`);
 
+const connectionOptions = {
+  serverSelectionTimeoutMS: 60000,
+  connectTimeoutMS: 60000,
+  socketTimeoutMS: 60000,
+  family: 4,
+};
+
+// If the URI is the long version, it already includes replicaSet etc.
 mongoose
-  .connect(uri, {
-    serverSelectionTimeoutMS: 45000, // 45 seconds
-    connectTimeoutMS: 45000, // 45 seconds
-    socketTimeoutMS: 60000, // 1 minute
-    family: 4, // Force IPv4
-    tls: true, // Explicitly enable TLS for Atlas
-  })
+  .connect(uri, connectionOptions)
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => {
     console.error("❌ MongoDB connection error:");
     console.error(err.message);
+    console.error("Full Error Stack:", err.stack);
     if (err.message.includes("replica set")) {
       console.log("💡 Tip: Common fixes for 'replica set' errors on Render:");
       console.log("   1. Whitelist 0.0.0.0/0 in MongoDB Atlas -> Network Access.");
