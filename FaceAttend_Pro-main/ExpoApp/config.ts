@@ -1,5 +1,5 @@
 // 🛠️ DEVELOPMENT URL (Default)
-export const API_BASE_URL = "https://berenice-unpromotional-kristian.ngrok-free.dev/api";
+export const API_BASE_URL = "https://faceattendpro-main-production.up.railway.app/api";
 
 // 🚀 PRODUCTION URL (Switch to this ONLY after deploying your backend)
 // export const API_BASE_URL = "https://your-production-app.onrender.com/api";
