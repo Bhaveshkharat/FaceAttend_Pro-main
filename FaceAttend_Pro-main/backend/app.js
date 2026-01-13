@@ -18,9 +18,18 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 app.use("/api/auth", authRoutes);
 // MongoDB Connection
+// Safer masking: Keep the protocol and host, hide user:pass
+const uri = process.env.MONGO_URI || "";
+const maskedUri = uri.includes("@")
+  ? uri.split("@")[0].replace(/(\/\/)(.*):(.*)/, "$1****:****") + "@" + uri.split("@")[1]
+  : "UNDEFINED or INVALID";
+
+console.log(`📡 Connecting to MongoDB URI: ${maskedUri}`);
+
 mongoose
-  .connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 10000, // 10 seconds
+  .connect(uri, {
+    serverSelectionTimeoutMS: 20000,
+    family: 4, // Force IPv4 to avoid Render/Atlas IPv6 resolution issues
   })
   .then(() => console.log("✅ MongoDB connected successfully"))
   .catch((err) => {
