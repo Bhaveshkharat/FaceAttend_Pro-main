@@ -58,9 +58,11 @@ export default function CameraView({ onCapture, disabled = false }: Props) {
   return (
     <View style={styles.container}>
       <ExpoCamera
+        key={permission.granted ? "granted" : "denied"}
         ref={cameraRef}
         style={styles.camera}
         facing="front"
+        ratio="16:9"
       />
 
       <TouchableOpacity
