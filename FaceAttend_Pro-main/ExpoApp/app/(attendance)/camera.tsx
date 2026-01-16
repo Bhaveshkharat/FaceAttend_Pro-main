@@ -48,17 +48,41 @@
 //   },
 //   text: { color: "#fff", fontSize: 18, fontWeight: "600" },
 // });
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { CameraView as ExpoCamera } from "expo-camera";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { CameraView as ExpoCamera, useCameraPermissions } from "expo-camera";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { useRef, useState } from "react";
 import { api } from "@/services/api";
 import { useRouter } from "expo-router";
 
 export default function AttendanceCamera() {
+  const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  if (!permission) {
+    // Camera permissions are still loading.
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    // Camera permissions are not granted yet.
+    return (
+      <View style={styles.container}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.message}>We need your permission to show the camera</Text>
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <Text style={styles.buttonText}>Grant Permission</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   const scanFace = async () => {
     if (!cameraRef.current || loading) return;
@@ -135,6 +159,21 @@ const styles = StyleSheet.create({
     backgroundColor: "black",
   },
 
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+
+  message: {
+    textAlign: "center",
+    marginBottom: 20,
+    fontSize: 16,
+    color: "#374151",
+  },
+
   overlay: {
     position: "absolute",
     bottom: 40,
@@ -148,6 +187,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 30,
+  },
+
+  permissionButton: {
+    backgroundColor: "#2563eb",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
   },
 
   buttonDisabled: {
