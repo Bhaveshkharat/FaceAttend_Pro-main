@@ -1,6 +1,6 @@
 import { CameraView as ExpoCamera, useCameraPermissions } from "expo-camera";
 import { View, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from "react-native";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 type Props = {
@@ -33,8 +33,10 @@ export default function CameraView({ onCapture, disabled = false }: Props) {
     );
   }
 
+  const [isCameraReady, setIsCameraReady] = useState(false);
+
   const takePhoto = async () => {
-    if (!cameraRef.current || disabled) return;
+    if (!cameraRef.current || disabled || !isCameraReady) return;
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -63,17 +65,27 @@ export default function CameraView({ onCapture, disabled = false }: Props) {
         style={styles.camera}
         facing="front"
         ratio="16:9"
+        onCameraReady={() => setIsCameraReady(true)}
       />
 
-      <TouchableOpacity
-        style={[styles.button, disabled && styles.buttonDisabled]}
-        onPress={takePhoto}
-        disabled={disabled}
-      >
-        <Text style={styles.buttonText}>
-          {disabled ? "Processing..." : "Capture Face"}
-        </Text>
-      </TouchableOpacity>
+      {isCameraReady && (
+        <TouchableOpacity
+          style={[styles.button, disabled && styles.buttonDisabled]}
+          onPress={takePhoto}
+          disabled={disabled}
+        >
+          <Text style={styles.buttonText}>
+            {disabled ? "Processing..." : "Capture Face"}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {!isCameraReady && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{ color: "white", marginTop: 10 }}>Starting camera...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -116,5 +128,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 20,
   },
 });
