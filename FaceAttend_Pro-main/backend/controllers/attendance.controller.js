@@ -377,7 +377,7 @@ exports.getTodayStats = async (req, res) => {
 exports.getTodayExceptions = async (req, res) => {
   try {
     const today = getLocalDate();
-    const targetDate = queryDate || today;
+    const targetDate = req.query.date || today;
 
     // ✅ Get current time in IST for comparison
     const nowIST = new Intl.DateTimeFormat("en-GB", {
@@ -424,7 +424,12 @@ exports.getTodayExceptions = async (req, res) => {
           if (calculatedStatus === "Absent") {
             return { name: emp.name, type: "Absent" };
           }
-          // Otherwise, they are still working, so don't show in Leave section yet
+
+          // ✅ NEW: Show half-day even if they haven't checked out yet
+          if (leaveType !== "None") {
+            return { name: emp.name, type: leaveType };
+          }
+
           return null;
         }
 
