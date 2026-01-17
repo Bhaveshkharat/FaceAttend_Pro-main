@@ -93,7 +93,7 @@ export default function Leave() {
                   styles.status,
                   item.type.includes("Leave") && styles.leave,
                   item.type === "Late" && styles.late,
-                  item.type.includes("Half Day") && styles.half,
+                  (item.type.includes("Half") || item.type.includes("half")) && styles.half,
                   item.type.includes("Absent") && styles.leave,
                 ]}
               >

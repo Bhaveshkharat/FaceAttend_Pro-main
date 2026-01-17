@@ -99,13 +99,13 @@ const calculateDailyStatus = (checkIn, checkOut) => {
   // 2. First Half Leave
   if (isLateIn) {
     status = "On half day leave";
-    leaveType = "First Half";
+    leaveType = "Half Day (First)";
   }
 
   // 3. Second Half Leave
   else if (isEarlyOut) {
     status = "On half day leave";
-    leaveType = "Second Half";
+    leaveType = "Half Day (Second)";
   }
 
   return { status, leaveType };
@@ -375,6 +375,7 @@ exports.getTodayStats = async (req, res) => {
 
 // ... existing getTodayExceptions ...
 exports.getTodayExceptions = async (req, res) => {
+  console.log(`[GET] Exceptions Requested for Date: ${req.query.date || "Today"}`);
   try {
     const today = getLocalDate();
     const targetDate = req.query.date || today;
@@ -405,9 +406,9 @@ exports.getTodayExceptions = async (req, res) => {
 
         // 1. If no record exists
         if (!record) {
-          // Rule 2: Only show as Absent after 7 PM if it's "today".
-          // If it's a past date, always show as Absent.
-          if (targetDate < today || nowMins >= absentLimitMins) {
+          // ✅ IMPROVED: If it's a past date OR today and past 10:30 AM, show as Absent
+          const startTimeMins = timeToMinutes(START_TIME_LIMIT);
+          if (targetDate < today || (targetDate === today && nowMins > startTimeMins)) {
             return { name: emp.name, type: "Absent" };
           }
           return null;
@@ -443,9 +444,10 @@ exports.getTodayExceptions = async (req, res) => {
       })
       .filter(Boolean);
 
+    console.log(`[GET] Exceptions Success. Count: ${result.length}`);
     res.json({ success: true, data: result });
   } catch (err) {
-    console.error("GET EXCEPTIONS ERROR:", err);
+    console.error("GET EXCEPTIONS ERROR (DETAILED):", err);
     res.status(500).json({ success: false, message: "Error" });
   }
 };
