@@ -1,6 +1,7 @@
 const Attendance = require("../models/Attendance");
 const faceService = require("../services/face.service");
 const User = require("../models/User");
+const ExcelJS = require("exceljs");
 
 // 🕒 CONSTANTS
 const LATE_THRESHOLD = "10:30:00"; // 10:30 PM (Per user request? User said 10:30 PM, but usually it's AM. User: "10:30 PM". Wait, "10:30 PM" checkin is very late. 
@@ -112,6 +113,7 @@ const calculateDailyStatus = (checkIn, checkOut) => {
 
 
 exports.markAttendanceByFace = async (req, res) => {
+  const startTime = Date.now();
   try {
     if (!req.file) {
       return res.status(400).json({ message: "Image required" });
@@ -120,6 +122,7 @@ exports.markAttendanceByFace = async (req, res) => {
     const result = await faceService.recognizeFaceForAttendance(req.file.path);
 
     if (!result.matched) {
+      console.log(`[SCAN] Face not recognized. Duration: ${Date.now() - startTime}ms`);
       return res.status(404).json({ message: "Face not recognized" });
     }
 
@@ -152,6 +155,7 @@ exports.markAttendanceByFace = async (req, res) => {
       const { status: calculatedStatus } = calculateDailyStatus(now, null);
       const displayMsg = calculatedStatus === "Absent" ? "Check-in (Absent)" : "Check-in successful";
 
+      console.log(`[SCAN] SUCCESS (IN) - ${result.name}. Duration: ${Date.now() - startTime}ms`);
       return res.json({
         success: true,
         type: "IN",
@@ -181,6 +185,7 @@ exports.markAttendanceByFace = async (req, res) => {
     attendance.status = "OUT";
     await attendance.save();
 
+    console.log(`[SCAN] SUCCESS (OUT) - ${result.name}. Duration: ${Date.now() - startTime}ms`);
     return res.json({
       success: true,
       type: "OUT",
@@ -437,5 +442,92 @@ exports.getTodayExceptions = async (req, res) => {
   } catch (err) {
     console.error("GET EXCEPTIONS ERROR:", err);
     res.status(500).json({ success: false, message: "Error" });
+  }
+};
+
+/**
+ * 📥 EXPORT ATTENDANCE TO EXCEL
+ */
+exports.exportAttendance = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) {
+      return res.status(400).json({ success: false, message: "Date required" });
+    }
+
+    const records = await Attendance.find({ date })
+      .populate("userId", "name email")
+      .sort({ createdAt: 1 });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(`Attendance ${date}`);
+
+    // Define Columns
+    worksheet.columns = [
+      { header: "No.", key: "no", width: 5 },
+      { header: "Name", key: "name", width: 25 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Date", key: "date", width: 15 },
+      { header: "Check-In", key: "checkIn", width: 15 },
+      { header: "Check-Out", key: "checkOut", width: 15 },
+      { header: "Status", key: "status", width: 20 },
+      { header: "Leave Type", key: "leaveType", width: 15 },
+    ];
+
+    // Add Data
+    records.forEach((r, index) => {
+      const { status: statusText, leaveType } = calculateDailyStatus(
+        r.checkInTime,
+        r.checkOutTime
+      );
+
+      let finalStatus = statusText;
+      if (r.status === "IN") {
+        if (statusText === "Absent") {
+          finalStatus = "Absent";
+        } else {
+          finalStatus = "IN";
+        }
+      }
+
+      worksheet.addRow({
+        no: index + 1,
+        name: r.userId?.name || "Unknown",
+        email: r.userId?.email || "N/A",
+        date: r.date,
+        checkIn: r.checkInTime || "--",
+        checkOut: r.checkOutTime || "--",
+        status: finalStatus,
+        leaveType: leaveType || "None",
+      });
+    });
+
+    // Style Header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF2563EB" }, // Primary Blue
+      };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    // Response Headers
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Attendance_${date}.xlsx`
+    );
+
+    // Write to stream
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("EXPORT ERROR:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

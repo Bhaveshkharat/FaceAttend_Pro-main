@@ -6,11 +6,15 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { api } from "@/services/api";
 
 type AttendanceItem = {
@@ -49,6 +53,38 @@ export default function History() {
       setLoading(false);
     }
   }, [formattedDate]);
+
+  const handleExport = async () => {
+    if (data.length === 0) {
+      Alert.alert("Info", "No data to export for this date");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = `${api.defaults.baseURL}/attendance/export?date=${formattedDate}`;
+      const fileName = `Attendance_${formattedDate}.xlsx`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      const { uri } = await FileSystem.downloadAsync(url, fileUri);
+
+      if (Platform.OS === "android" || Platform.OS === "ios") {
+        await Sharing.shareAsync(uri, {
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          dialogTitle: "Export Attendance",
+          UTI: "com.microsoft.excel.xlsx",
+        });
+      } else {
+        Alert.alert("Success", "Excel file generated successfully");
+      }
+    } catch (err) {
+      console.log("EXPORT ERROR:", err);
+      Alert.alert("Error", "Failed to export attendance");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -95,7 +131,7 @@ export default function History() {
         </View>
 
         {/* Export */}
-        <TouchableOpacity style={styles.exportBtn}>
+        <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
           <Ionicons name="download" size={16} color="#fff" />
           <Text style={styles.exportText}>Export</Text>
         </TouchableOpacity>

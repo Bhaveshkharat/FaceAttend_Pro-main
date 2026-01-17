@@ -17,6 +17,7 @@ router.get("/summary", getAttendanceSummary);
 router.get("/employee/:id", getAttendanceByEmployee);
 router.get("/stats/today", getTodayStats);
 router.get("/exceptions/today", getTodayExceptions);
+router.get("/export", require("../controllers/attendance.controller").exportAttendance);
 
 module.exports = router;
 

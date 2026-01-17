@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { api } from "@/services/api";
 import { useRouter } from "expo-router";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 export default function AttendanceCamera() {
   const router = useRouter();
@@ -36,13 +37,20 @@ export default function AttendanceCamera() {
       setLoading(true);
 
       const photo = await cameraRef.takePictureAsync({
-        quality: 0.8,
+        quality: 0.6,
         skipProcessing: true
       });
 
+      // ⚡ OPTIMIZATION: Resize to 600px height for faster upload & processing
+      const resized = await manipulateAsync(
+        photo.uri,
+        [{ resize: { height: 600 } }],
+        { compress: 0.7, format: SaveFormat.JPEG }
+      );
+
       const formData = new FormData();
       formData.append("image", {
-        uri: photo.uri,
+        uri: resized.uri,
         name: "scan.jpg",
         type: "image/jpeg"
       } as any);
