@@ -33,11 +33,12 @@ db = client.get_database() # Uses database from connection string
 face_collection = db.face_profiles
 
 # Initialize InsightFace
-# Using buffalo_l model (good balance of speed/acc)
-print("Initializing InsightFace model...")
-face_app = FaceAnalysis(name='buffalo_l')
+# buffalo_l is accurate but heavy. buffalo_sc is much lighter for limited RAM (Railway)
+MODEL_NAME = os.getenv("FACE_MODEL", "buffalo_sc")
+print(f"Initializing InsightFace model: {MODEL_NAME}...")
+face_app = FaceAnalysis(name=MODEL_NAME)
 face_app.prepare(ctx_id=-1, det_size=(640, 640))
-print("Model loaded successfully")
+print(f"Model {MODEL_NAME} loaded successfully")
 
 def process_image(file_bytes):
     """Convert bytes to opencv format"""

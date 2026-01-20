@@ -33,7 +33,14 @@ class FaceService {
       };
 
       console.error('Face Service Registration Error:', errorDetail);
-      const errorMessage = error.response?.data?.detail || error.response?.data?.message || error.message || 'Face registration failed';
+
+      let errorMessage = 'Face registration failed';
+      if (error.response?.data?.detail) errorMessage = error.response.data.detail;
+      else if (error.response?.data?.message) errorMessage = error.response.data.message;
+      else if (error.code === 'ECONNREFUSED') errorMessage = `Connection Refused: backend cannot reach Python service at ${PYTHON_SERVICE_URL}. Check if the microservice is running and the URL is correct.`;
+      else if (error.code === 'ENOTFOUND') errorMessage = `Host Not Found: The URL ${PYTHON_SERVICE_URL} is invalid or unreachable.`;
+      else errorMessage = error.message;
+
       throw new Error(errorMessage);
     }
   }
@@ -82,7 +89,13 @@ class FaceService {
         url: `${PYTHON_SERVICE_URL}/verify`
       };
       console.error('Face Service Verification Error:', errorDetail);
-      return { matched: false, error: error.message };
+
+      let errorMessage = 'Face verification failed';
+      if (error.code === 'ECONNREFUSED') errorMessage = `Connection Refused: backend cannot reach Python service at ${PYTHON_SERVICE_URL}.`;
+      else if (error.code === 'ENOTFOUND') errorMessage = `Host Not Found: The URL ${PYTHON_SERVICE_URL} is invalid.`;
+      else errorMessage = error.message;
+
+      return { matched: false, error: errorMessage };
     }
   }
 }
