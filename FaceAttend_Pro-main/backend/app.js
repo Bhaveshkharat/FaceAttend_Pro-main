@@ -38,6 +38,6 @@ app.get("/", (req, res) => {
 });
 
 // ⚡ PRELOAD AI MODELS
-faceService.preloadModels();
+// Models now loaded in Python Microservice
 
 module.exports = app;
