@@ -179,11 +179,11 @@ async def verify_face(
                 best_score = sim
                 best_match = profile
 
-        # Thresholds: 0.40 is good for buffalo_sc/buffalo_l.
-        VERIFY_THRESHOLD = 0.40 
+        # Thresholds: 0.38 is slightly more forgiving for specs/glasses variations.
+        VERIFY_THRESHOLD = 0.38 
 
         if best_match and best_score >= VERIFY_THRESHOLD:
-            print(f"VERIFIED (Manager {managerId}): {best_match['userId']} with score {best_score}")
+            print(f"VERIFIED (Manager {managerId}): {best_match['userId']} (Score: {best_score:.4f})")
             return {
                 "success": True,
                 "verified": True,
@@ -191,7 +191,7 @@ async def verify_face(
                 "score": float(best_score)
             }
         
-        print(f"NOT RECOGNIZED: Best score in manager context was {best_score}")
+        print(f"NOT RECOGNIZED: Best score in manager context was {best_score:.4f} (Threshold: {VERIFY_THRESHOLD})")
         return {
             "success": True,
             "verified": False,
