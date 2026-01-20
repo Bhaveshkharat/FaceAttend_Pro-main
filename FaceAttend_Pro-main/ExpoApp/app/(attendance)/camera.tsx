@@ -41,7 +41,8 @@ export default function AttendanceCamera() {
         Alert.alert(
           "Success",
           `${res.data?.name} checked ${res.data.type === "IN" ? "in" : "out"}`,
-          [{ text: "OK", onPress: () => router.replace("/(tabs)/dashboard") }]
+          [{ text: "OK", onPress: () => router.replace("/dashboard") }],
+          { cancelable: false }
         );
       } else {
         Alert.alert("Failed", res.data?.message || "Face not recognized");
