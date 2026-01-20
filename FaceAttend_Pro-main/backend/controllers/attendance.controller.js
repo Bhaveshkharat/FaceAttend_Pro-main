@@ -118,7 +118,7 @@ exports.markAttendanceByFace = async (req, res) => {
       return res.status(400).json({ message: "Image required" });
     }
 
-    const result = await faceService.recognizeFaceForAttendance(req.file.path);
+    const result = await faceService.recognizeFace(req.file.path);
 
     if (!result.matched) {
       return res.status(404).json({ message: "Face not recognized" });
