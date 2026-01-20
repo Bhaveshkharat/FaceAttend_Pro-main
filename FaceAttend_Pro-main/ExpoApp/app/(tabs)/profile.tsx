@@ -28,7 +28,7 @@ export default function Profile() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const handleLogout = () => {
     Alert.alert(
       "Logout",
@@ -85,14 +85,20 @@ export default function Profile() {
       setLoading(true);
 
       // fetch employees
-      const employeesRes = await api.get("/employees");
+      const employeesRes = await api.get(`/employees?managerId=${user?._id}`);
 
       // fetch attendance summary
-      const summaryRes = await api.get("/attendance/summary");
+      const summaryRes = await api.get(`/attendance/summary?managerId=${user?._id}`);
 
       // fetch registered face IDs
-      const registeredRes = await api.get("/face/registered");
-      const registeredIds = registeredRes.data.registeredUserIds || [];
+      let registeredIds = [];
+      try {
+        const registeredRes = await api.get(`/face/registered?managerId=${user?._id}`);
+        registeredIds = registeredRes.data.registeredUserIds || [];
+      } catch (faceErr) {
+        console.log("FACE REGISTER FETCH FAILED (Optional):", faceErr);
+        // Not critical, continue with empty array
+      }
 
       const summaryMap = summaryRes.data.data.reduce(
         (acc: any, curr: any) => {

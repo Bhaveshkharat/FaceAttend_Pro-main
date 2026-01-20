@@ -16,6 +16,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { api } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 type AttendanceItem = {
   _id: string;
@@ -30,6 +31,7 @@ type AttendanceItem = {
 };
 
 export default function History() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [date, setDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
@@ -44,7 +46,7 @@ export default function History() {
   const loadAttendance = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/attendance?date=${formattedDate}`);
+      const res = await api.get(`/attendance?date=${formattedDate}&managerId=${user?._id}`);
       setData(res.data?.data || []);
     } catch (err) {
       console.log("HISTORY ERROR:", err);
@@ -52,7 +54,7 @@ export default function History() {
     } finally {
       setLoading(false);
     }
-  }, [formattedDate]);
+  }, [formattedDate, user?._id]);
 
   const handleExport = async () => {
     if (data.length === 0) {
@@ -62,7 +64,7 @@ export default function History() {
 
     try {
       setLoading(true);
-      const url = `${api.defaults.baseURL}/attendance/export?date=${formattedDate}`;
+      const url = `${api.defaults.baseURL}/attendance/export?date=${formattedDate}&managerId=${user?._id}`;
       const fileName = `Attendance_${formattedDate}.xlsx`;
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 

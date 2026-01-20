@@ -53,7 +53,7 @@ exports.registerManager = async (req, res) => {
 
 exports.registerEmployee = async (req, res) => {
   try {
-    let { name, email } = req.body;
+    let { name, email, managerId } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({
@@ -77,6 +77,7 @@ exports.registerEmployee = async (req, res) => {
       name,
       email,
       role: "employee",
+      managerId: managerId || null, // Optional for legacy support if needed, but should be sent by frontend
     });
 
     return res.json({
@@ -85,6 +86,7 @@ exports.registerEmployee = async (req, res) => {
         _id: user._id,
         name: user.name,
         role: user.role,
+        managerId: user.managerId,
       },
     });
   } catch (err) {

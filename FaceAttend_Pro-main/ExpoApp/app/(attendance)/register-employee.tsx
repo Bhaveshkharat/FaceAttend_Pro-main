@@ -6,9 +6,11 @@ import { useRouter } from "expo-router";
 import AppHeader from "@/components/ui/AppHeader";
 import Button from "@/components/ui/Button";
 import { api } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterEmployee() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,6 +29,7 @@ export default function RegisterEmployee() {
       const res = await api.post("/auth/register-employee", {
         name: name.trim(),
         email: email.trim(),
+        managerId: user?._id
       });
 
       const userId = res.data.user._id;

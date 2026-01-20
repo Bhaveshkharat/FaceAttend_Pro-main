@@ -5,7 +5,11 @@ const User = require("../models/User");
 // GET all employees (excluding managers)
 router.get("/", async (req, res) => {
   try {
-    const employees = await User.find({ role: "employee" }).select(
+    const { managerId } = req.query;
+    const filter = { role: "employee" };
+    if (managerId) filter.managerId = managerId;
+
+    const employees = await User.find(filter).select(
       "name email"
     );
 

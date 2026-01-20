@@ -116,8 +116,17 @@ const recognize = async (req, res) => {
 
 const getRegisteredStatus = async (req, res) => {
   try {
+    const { managerId } = req.query;
     const { getRegisteredFaces } = require("../services/face.service");
-    const userIds = await getRegisteredFaces();
+
+    let userIds = await getRegisteredFaces();
+
+    if (managerId) {
+      const myEmployees = await User.find({ managerId }).select("_id");
+      const myEmployeeIds = myEmployees.map(e => e._id.toString());
+      userIds = userIds.filter(uid => myEmployeeIds.includes(uid));
+    }
+
     return res.json({ success: true, registeredUserIds: userIds });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });

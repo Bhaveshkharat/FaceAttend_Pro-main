@@ -202,18 +202,20 @@ exports.markAttendanceByFace = async (req, res) => {
  */
 exports.getAttendanceByDate = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, managerId } = req.query;
 
     if (!date) {
       return res.status(400).json({ success: false, message: "Date required" });
     }
 
-    // 1. Get all employees
-    // 2. Get attendance for date
-    // 3. Map status
+    // 1. Build filter
+    const filter = { date };
+    if (managerId) {
+      const employees = await User.find({ managerId }).select("_id");
+      filter.userId = { $in: employees.map(e => e._id) };
+    }
 
-    // If we just want records:
-    const records = await Attendance.find({ date })
+    const records = await Attendance.find(filter)
       .populate("userId", "name email")
       .sort({ createdAt: 1 });
 
@@ -255,8 +257,14 @@ exports.getAttendanceByDate = async (req, res) => {
 
 exports.getAttendanceSummary = async (req, res) => {
   try {
-    const employees = await User.find({ role: "employee" });
-    const attendance = await Attendance.find({});
+    const { managerId } = req.query;
+    const userFilter = { role: "employee" };
+    if (managerId) userFilter.managerId = managerId;
+
+    const employees = await User.find(userFilter);
+    const employeeIds = employees.map(e => e._id);
+
+    const attendance = await Attendance.find({ userId: { $in: employeeIds } });
 
     const summary = employees.map((emp) => {
       const empRecords = attendance.filter(
@@ -335,9 +343,20 @@ exports.getAttendanceByEmployee = async (req, res) => {
 // ... existing getTodayStats ...
 exports.getTodayStats = async (req, res) => {
   try {
+    const { managerId } = req.query;
     const today = getLocalDate();
-    const totalEmployees = await User.countDocuments({ role: "employee" });
-    const todayAttendance = await Attendance.find({ date: today });
+
+    const userFilter = { role: "employee" };
+    if (managerId) userFilter.managerId = managerId;
+
+    const employees = await User.find(userFilter);
+    const employeeIds = employees.map(e => e._id);
+
+    const totalEmployees = employees.length;
+    const todayAttendance = await Attendance.find({
+      date: today,
+      userId: { $in: employeeIds }
+    });
 
     let presentCount = 0;
     let outCount = 0;
@@ -374,21 +393,18 @@ exports.getTodayExceptions = async (req, res) => {
   try {
     const today = getLocalDate();
     const targetDate = req.query.date || today;
+    const { managerId } = req.query;
 
-    // ✅ Get current time in IST for comparison
-    const nowIST = new Intl.DateTimeFormat("en-GB", {
-      timeZone: "Asia/Kolkata",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).format(new Date());
+    const userFilter = { role: "employee" };
+    if (managerId) userFilter.managerId = managerId;
 
-    const nowMins = timeToMinutes(nowIST);
-    const absentLimitMins = timeToMinutes(ABSENT_TIME_LIMIT);
+    const employees = await User.find(userFilter);
+    const employeeIds = employees.map(e => e._id);
 
-    const employees = await User.find({ role: "employee" });
-    const attendance = await Attendance.find({ date: targetDate });
+    const attendance = await Attendance.find({
+      date: targetDate,
+      userId: { $in: employeeIds }
+    });
 
     const attendanceMap = {};
     attendance.forEach((a) => {
@@ -451,12 +467,18 @@ exports.getTodayExceptions = async (req, res) => {
  */
 exports.exportAttendance = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, managerId } = req.query;
     if (!date) {
       return res.status(400).json({ success: false, message: "Date required" });
     }
 
-    const records = await Attendance.find({ date })
+    const filter = { date };
+    if (managerId) {
+      const employees = await User.find({ managerId }).select("_id");
+      filter.userId = { $in: employees.map(e => e._id) };
+    }
+
+    const records = await Attendance.find(filter)
       .populate("userId", "name email")
       .sort({ createdAt: 1 });
 

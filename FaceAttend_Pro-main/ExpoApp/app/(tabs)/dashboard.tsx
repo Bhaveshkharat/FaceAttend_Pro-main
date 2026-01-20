@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "@/components/ui/AppHeader";
 import { api } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Dashboard() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [stats, setStats] = useState({
     totalEmployees: 0,
@@ -16,12 +18,12 @@ export default function Dashboard() {
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await api.get("/attendance/stats/today");
+      const res = await api.get(`/attendance/stats/today?managerId=${user?._id}`);
       setStats(res.data.data);
     } catch (err) {
       console.log("DASHBOARD STATS ERROR:", err);
     }
-  }, []);
+  }, [user?._id]);
 
   useFocusEffect(
     useCallback(() => {

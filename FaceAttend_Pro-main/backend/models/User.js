@@ -25,6 +25,14 @@ const userSchema = new mongoose.Schema(
       enum: ["manager", "employee"],
       required: true,
     },
+
+    managerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: function () {
+        return this.role === "employee";
+      },
+    },
   },
   { timestamps: true }
 );
