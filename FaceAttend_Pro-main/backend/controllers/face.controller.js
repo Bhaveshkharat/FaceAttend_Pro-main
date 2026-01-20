@@ -25,6 +25,20 @@ const register = async (req, res) => {
     return res.json(result);
   } catch (err) {
     console.error("FACE REGISTER ERROR:", err);
+
+    // 🧹 CLEANUP: If face registration fails (e.g. duplicate), delete the user record
+    // that was created in the previous step.
+    try {
+      const User = require("../models/User");
+      const { userId } = req.body;
+      if (userId) {
+        console.log(`Cleaning up User ${userId} due to face registration failure...`);
+        await User.findByIdAndDelete(userId);
+      }
+    } catch (cleanupErr) {
+      console.error("CLEANUP ERROR:", cleanupErr);
+    }
+
     return res.status(500).json({ success: false, message: err.message });
   }
 };
