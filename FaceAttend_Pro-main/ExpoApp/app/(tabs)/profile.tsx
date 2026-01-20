@@ -152,6 +152,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 14,
+    color: "#000",
   },
   card: {
     flexDirection: "row",
@@ -165,6 +166,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#000",
   },
   email: {
     fontSize: 13,
@@ -183,6 +185,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontWeight: "700",
     fontSize: 14,
+    color: "#000",
   },
   statLabel: {
     fontSize: 11,

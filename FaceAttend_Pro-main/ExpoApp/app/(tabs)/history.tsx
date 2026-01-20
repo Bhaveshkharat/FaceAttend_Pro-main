@@ -199,6 +199,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 14,
+    color: "#000",
   },
   filterRow: {
     flexDirection: "row",
@@ -231,6 +232,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     paddingLeft: 6,
+    color: "#000",
   },
   exportBtn: {
     flexDirection: "row",
@@ -255,6 +257,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "700",
     textAlign: "center",
+    color: "#000",
   },
   row: {
     flexDirection: "row",
@@ -268,6 +271,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontWeight: "500",
+    color: "#000",
   },
   present: { color: "green" },
   absent: { color: "red" },

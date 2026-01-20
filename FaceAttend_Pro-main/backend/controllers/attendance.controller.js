@@ -113,7 +113,6 @@ const calculateDailyStatus = (checkIn, checkOut) => {
 
 
 exports.markAttendanceByFace = async (req, res) => {
-  const startTime = Date.now();
   try {
     if (!req.file) {
       return res.status(400).json({ message: "Image required" });
@@ -122,7 +121,6 @@ exports.markAttendanceByFace = async (req, res) => {
     const result = await faceService.recognizeFaceForAttendance(req.file.path);
 
     if (!result.matched) {
-      console.log(`[SCAN] Face not recognized. Duration: ${Date.now() - startTime}ms`);
       return res.status(404).json({ message: "Face not recognized" });
     }
 
@@ -155,7 +153,6 @@ exports.markAttendanceByFace = async (req, res) => {
       const { status: calculatedStatus } = calculateDailyStatus(now, null);
       const displayMsg = calculatedStatus === "Absent" ? "Check-in (Absent)" : "Check-in successful";
 
-      console.log(`[SCAN] SUCCESS (IN) - ${result.name}. Duration: ${Date.now() - startTime}ms`);
       return res.json({
         success: true,
         type: "IN",
@@ -185,7 +182,6 @@ exports.markAttendanceByFace = async (req, res) => {
     attendance.status = "OUT";
     await attendance.save();
 
-    console.log(`[SCAN] SUCCESS (OUT) - ${result.name}. Duration: ${Date.now() - startTime}ms`);
     return res.json({
       success: true,
       type: "OUT",
@@ -375,7 +371,6 @@ exports.getTodayStats = async (req, res) => {
 
 // ... existing getTodayExceptions ...
 exports.getTodayExceptions = async (req, res) => {
-  console.log(`[GET] Exceptions Requested for Date: ${req.query.date || "Today"}`);
   try {
     const today = getLocalDate();
     const targetDate = req.query.date || today;
@@ -444,7 +439,6 @@ exports.getTodayExceptions = async (req, res) => {
       })
       .filter(Boolean);
 
-    console.log(`[GET] Exceptions Success. Count: ${result.length}`);
     res.json({ success: true, data: result });
   } catch (err) {
     console.error("GET EXCEPTIONS ERROR (DETAILED):", err);

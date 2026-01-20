@@ -120,6 +120,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 14,
+    color: "#000",
   },
   filterRow: {
     flexDirection: "row",
