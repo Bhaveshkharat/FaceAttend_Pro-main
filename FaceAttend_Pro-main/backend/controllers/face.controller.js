@@ -3,12 +3,18 @@ const {
   recognizeFace
 } = require("../services/face.service");
 
+const User = require("../models/User");
+const fs = require("fs");
+
 const { markAttendance } = require("./attendance.controller");
 
 // REGISTER FACE
 const register = async (req, res) => {
+  let userIdToCleanup = null;
+  let imagePathToCleanup = null;
+
   try {
-    console.log("REGISTER REQUEST RECEIVED");
+    console.log("--- FACE REGISTER START ---");
     console.log("Body:", req.body);
     console.log("File:", req.file);
 
@@ -20,26 +26,46 @@ const register = async (req, res) => {
     const { userId, name } = req.body;
     const imagePath = req.file.path;
 
+    userIdToCleanup = userId;
+    imagePathToCleanup = imagePath;
+
+    console.log(`Processing registration for User: ${userId}, Name: ${name}`);
+
     const result = await registerFace(imagePath, userId);
 
+    console.log("--- FACE REGISTER SUCCESS ---");
     return res.json(result);
   } catch (err) {
-    console.error("FACE REGISTER ERROR:", err);
+    console.error("--- FACE REGISTER FAILURE ---");
+    console.error("Error Message:", err.message);
 
-    // 🧹 CLEANUP: If face registration fails (e.g. duplicate), delete the user record
-    // that was created in the previous step.
-    try {
-      const User = require("../models/User");
-      const { userId } = req.body;
-      if (userId) {
-        console.log(`Cleaning up User ${userId} due to face registration failure...`);
-        await User.findByIdAndDelete(userId);
+    // 🧹 CLEANUP 1: Delete the user record from MongoDB
+    if (userIdToCleanup) {
+      try {
+        console.log(`🧹 CLEANUP: Deleting User record ${userIdToCleanup} from MongoDB...`);
+        const deleteRes = await User.findByIdAndDelete(userIdToCleanup);
+        console.log(`🧹 CLEANUP: User record deleted:`, !!deleteRes);
+      } catch (cleanupErr) {
+        console.error("🧹 CLEANUP ERROR (MongoDB):", cleanupErr.message);
       }
-    } catch (cleanupErr) {
-      console.error("CLEANUP ERROR:", cleanupErr);
     }
 
-    return res.status(500).json({ success: false, message: err.message });
+    // 🧹 CLEANUP 2: Delete the uploaded image file
+    if (imagePathToCleanup) {
+      try {
+        if (fs.existsSync(imagePathToCleanup)) {
+          console.log(`🧹 CLEANUP: Deleting temporary file ${imagePathToCleanup}...`);
+          fs.unlinkSync(imagePathToCleanup);
+        }
+      } catch (fileErr) {
+        console.error("🧹 CLEANUP ERROR (File):", fileErr.message);
+      }
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Face registration failed"
+    });
   }
 };
 
