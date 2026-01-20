@@ -60,11 +60,12 @@ def health_check():
 @app.post("/register")
 async def register_face(
     image: UploadFile = File(...),
-    userId: str = Form(...)
+    userId: str = Form(...),
+    managerId: str = Form(None)
 ):
     try:
         contents = await image.read()
-        print(f"Received registration request for userId: {userId}, image size: {len(contents)} bytes")
+        print(f"Received registration request for userId: {userId}, managerId: {managerId}, image size: {len(contents)} bytes")
         
         img_bgr = process_image(contents)
         print("Image processed successfully")
@@ -84,10 +85,16 @@ async def register_face(
         embedding = face.embedding.tolist()  # Convert to standard list for Storage
         target_embedding = np.array(face.embedding, dtype=np.float32)
 
-        # 🔍 DUPLICATE DETECTION: Check if this face already belongs to someone else
+        # 🔍 DUPLICATE DETECTION: Check if this face already belongs to someone else UNDER THE SAME MANAGER
         # Lowering to 0.50 to be more aggressive in catching duplicates
         DUPLICATE_THRESHOLD = 0.50
-        profiles = list(face_collection.find({"userId": {"$ne": userId}, "embedding": {"$exists": True}}))
+        
+        # Build filter: same manager, different userId
+        query = {"userId": {"$ne": userId}, "embedding": {"$exists": True}}
+        if managerId:
+            query["managerId"] = managerId
+            
+        profiles = list(face_collection.find(query))
         
         best_dup_score = -1.0
         best_dup_id = None
@@ -101,24 +108,27 @@ async def register_face(
                 best_dup_id = profile['userId']
 
             if sim > DUPLICATE_THRESHOLD:
-                print(f"DUPLICATE REJECTED: Request for {userId} matches {profile['userId']} with score {sim}")
+                print(f"DUPLICATE REJECTED (Manager {managerId}): matches {profile['userId']} with score {sim}")
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Face already registered under ID: {profile['userId']} (Score: {sim:.2f})"
+                    detail=f"Face already registered for this manager under ID: {profile['userId']}"
                 )
 
-        print(f"Registration Check: Best existing match for {userId} was {best_dup_id} with score {best_dup_score}")
+        print(f"Registration Check: Best internal match for {userId} was {best_dup_id} with score {best_dup_score}")
         print(f"Saving embedding to MongoDB for userId: {userId}")
+        
         # Save to MongoDB
+        update_data = {
+            "userId": userId,
+            "embedding": embedding,
+            "updatedAt": os.getenv("CURRENT_DATE", "NOW") 
+        }
+        if managerId:
+            update_data["managerId"] = managerId
+
         res = face_collection.update_one(
             {"userId": userId},
-            {
-                "$set": {
-                    "userId": userId,
-                    "embedding": embedding,
-                    "updatedAt": os.getenv("CURRENT_DATE", "NOW") 
-                }
-            },
+            {"$set": update_data},
             upsert=True
         )
         print(f"MongoDB update result: {res.modified_count} modified, {res.upserted_id} upserted")
@@ -132,10 +142,13 @@ async def register_face(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/verify")
-async def verify_face(image: UploadFile = File(...)):
+async def verify_face(
+    image: UploadFile = File(...),
+    managerId: str = Form(None)
+):
     try:
         contents = await image.read()
-        print(f"Received verification request, image size: {len(contents)} bytes")
+        print(f"Received verification request (Manager: {managerId}), image size: {len(contents)} bytes")
             
         img_bgr = process_image(contents)
 
@@ -148,10 +161,12 @@ async def verify_face(image: UploadFile = File(...)):
         target_face = sorted(faces, key=lambda x: (x.bbox[2]-x.bbox[0]) * (x.bbox[3]-x.bbox[1]))[-1]
         target_embedding = np.array(target_face.embedding, dtype=np.float32)
 
-        # Retrieve all embeddings from DB
-        # TODO: Optimize by using vector database or indexing if scaling up
-        # For small employees list (<1000), iterating is fine (~10-20ms)
-        profiles = list(face_collection.find({"embedding": {"$exists": True}}))
+        # Retrieve all embeddings from DB FOR THIS MANAGER ONLY
+        query = {"embedding": {"$exists": True}}
+        if managerId:
+            query["managerId"] = managerId
+            
+        profiles = list(face_collection.find(query))
 
         best_score = -1.0
         best_match = None
@@ -165,11 +180,10 @@ async def verify_face(image: UploadFile = File(...)):
                 best_match = profile
 
         # Thresholds: 0.40 is good for buffalo_sc/buffalo_l.
-        # It handles glasses/beards well within this range.
         VERIFY_THRESHOLD = 0.40 
 
         if best_match and best_score >= VERIFY_THRESHOLD:
-            print(f"VERIFIED: {best_match['userId']} with score {best_score}")
+            print(f"VERIFIED (Manager {managerId}): {best_match['userId']} with score {best_score}")
             return {
                 "success": True,
                 "verified": True,
@@ -177,11 +191,11 @@ async def verify_face(image: UploadFile = File(...)):
                 "score": float(best_score)
             }
         
-        print(f"NOT RECOGNIZED: Best score was {best_score}")
+        print(f"NOT RECOGNIZED: Best score in manager context was {best_score}")
         return {
             "success": True,
             "verified": False,
-            "message": "Face not recognized",
+            "message": "Face not recognized in this manager's database",
             "score": float(best_score)
         }
 

@@ -4,9 +4,11 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { api } from "@/services/api";
 import { useRouter } from "expo-router";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AttendanceCamera() {
   const router = useRouter();
+  const { user } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
   const [cameraRef, setCameraRef] = useState<CameraView | null>(null);
@@ -55,7 +57,7 @@ export default function AttendanceCamera() {
         type: "image/jpeg"
       } as any);
 
-      const res = await api.post("/attendance/scan", formData, {
+      const res = await api.post(`/attendance/scan?managerId=${user?._id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
 

@@ -4,9 +4,11 @@ import { useState } from "react";
 import FaceScanner from "@/components/FaceScanner";
 import { api } from "@/services/api";
 import * as FileSystem from "expo-file-system/legacy";
+import { useAuth } from "@/context/AuthContext";
 
 export default function FaceRegister() {
   const router = useRouter();
+  const { user } = useAuth();
   const { userId, name } = useLocalSearchParams();
 
   const [loading, setLoading] = useState(false);
@@ -42,6 +44,7 @@ export default function FaceRegister() {
 
       formData.append("userId", userId as string);
       formData.append("name", name as string);
+      if (user?._id) formData.append("managerId", user._id);
 
       console.log("Sending face registration request...");
       console.log("UserId:", userId);

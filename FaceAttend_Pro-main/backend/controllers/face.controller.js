@@ -23,15 +23,15 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, message: "No image file uploaded" });
     }
 
-    const { userId, name } = req.body;
+    const { userId, name, managerId } = req.body;
     const imagePath = req.file.path;
 
     userIdToCleanup = userId;
     imagePathToCleanup = imagePath;
 
-    console.log(`Processing registration for User: ${userId}, Name: ${name}`);
+    console.log(`Processing registration for User: ${userId}, Name: ${name}, Manager: ${managerId}`);
 
-    const result = await registerFace(imagePath, userId);
+    const result = await registerFace(imagePath, userId, managerId);
 
     console.log("--- FACE REGISTER SUCCESS ---");
     return res.json(result);
@@ -79,8 +79,9 @@ const recognize = async (req, res) => {
       return res.status(400).json({ success: false, message: "No image file uploaded" });
     }
 
+    const { managerId } = req.query; // Added for context
     const imagePath = req.file.path;
-    const result = await recognizeFace(imagePath);
+    const result = await recognizeFace(imagePath, managerId);
 
     if (!result.matched) {
       return res.json({

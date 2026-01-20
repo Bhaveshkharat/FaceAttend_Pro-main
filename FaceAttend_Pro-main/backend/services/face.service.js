@@ -10,12 +10,14 @@ class FaceService {
    * Send image to Python Service for Registration
    * @param {string} imagePath - Path to the image file
    * @param {string} userId - ID of the user
+   * @param {string} managerId - ID of the manager
    */
-  async registerFace(imagePath, userId) {
+  async registerFace(imagePath, userId, managerId) {
     try {
       const formData = new FormData();
       formData.append('image', fs.createReadStream(imagePath));
       formData.append('userId', userId);
+      if (managerId) formData.append('managerId', managerId);
 
       const response = await axios.post(`${PYTHON_SERVICE_URL}/register`, formData, {
         headers: {
@@ -48,11 +50,13 @@ class FaceService {
   /**
    * Send image to Python Service for Verification
    * @param {string} imagePath - Path to the image file
+   * @param {string} managerId - ID of the manager (optional context)
    */
-  async recognizeFace(imagePath) {
+  async recognizeFace(imagePath, managerId) {
     try {
       const formData = new FormData();
       formData.append('image', fs.createReadStream(imagePath));
+      if (managerId) formData.append('managerId', managerId);
 
       const response = await axios.post(`${PYTHON_SERVICE_URL}/verify`, formData, {
         headers: {
