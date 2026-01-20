@@ -48,6 +48,11 @@ def process_image(file_bytes):
     img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
     return img_bgr
 
+def calculate_similarity(feat1, feat2):
+    """Compute Cosine Similarity between two embeddings"""
+    # vectors are typically normalized, but let's be safe
+    return np.dot(feat1, feat2) / (np.linalg.norm(feat1) * np.linalg.norm(feat2))
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "InsightFace Microservice"}
@@ -77,10 +82,24 @@ async def register_face(
         face = sorted(faces, key=lambda x: (x.bbox[2]-x.bbox[0]) * (x.bbox[3]-x.bbox[1]))[-1]
         
         embedding = face.embedding.tolist()  # Convert to standard list for Storage
+        target_embedding = np.array(face.embedding, dtype=np.float32)
+
+        # 🔍 DUPLICATE DETECTION: Check if this face already belongs to someone else
+        DUPLICATE_THRESHOLD = 0.65
+        profiles = list(face_collection.find({"userId": {"$ne": userId}, "embedding": {"$exists": True}}))
+        
+        for profile in profiles:
+            stored_emb = np.array(profile['embedding'], dtype=np.float32)
+            sim = calculate_similarity(target_embedding, stored_emb)
+            if sim > DUPLICATE_THRESHOLD:
+                print(f"DUPLICATE DETECTED: New request for {userId} matches existing {profile['userId']} with score {sim}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Face already registered under a different ID. Please contact administrator."
+                )
 
         print(f"Saving embedding to MongoDB for userId: {userId}")
         # Save to MongoDB
-        # Using update_one with upsert to replace existing if any
         res = face_collection.update_one(
             {"userId": userId},
             {
@@ -129,20 +148,18 @@ async def verify_face(image: UploadFile = File(...)):
 
         for profile in profiles:
             stored_embedding = np.array(profile['embedding'], dtype=np.float32)
-            
-            # Compute Cosine Similarity
-            # inner product of normalized vectors
-            sim = np.dot(target_embedding, stored_embedding) / (np.linalg.norm(target_embedding) * np.linalg.norm(stored_embedding))
+            sim = calculate_similarity(target_embedding, stored_embedding)
             
             if sim > best_score:
                 best_score = sim
                 best_match = profile
 
-        # Thresholds for ArcFace typically around 0.25 - 0.4 depending on strictness
-        # 0.4 is usually a very safe match.
-        SIMILARITY_THRESHOLD = 0.4 
+        # Thresholds: 0.40 is good for buffalo_sc/buffalo_l.
+        # It handles glasses/beards well within this range.
+        VERIFY_THRESHOLD = 0.40 
 
-        if best_match and best_score >= SIMILARITY_THRESHOLD:
+        if best_match and best_score >= VERIFY_THRESHOLD:
+            print(f"VERIFIED: {best_match['userId']} with score {best_score}")
             return {
                 "success": True,
                 "verified": True,
@@ -150,6 +167,7 @@ async def verify_face(image: UploadFile = File(...)):
                 "score": float(best_score)
             }
         
+        print(f"NOT RECOGNIZED: Best score was {best_score}")
         return {
             "success": True,
             "verified": False,
