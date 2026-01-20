@@ -4,8 +4,12 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for OpenCV and InsightFace
+# Install system dependencies for OpenCV, InsightFace, and build tools
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
     libgl1 \
     libglib2.0-0 \
     libxcb1 \
