@@ -139,10 +139,8 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
                         updateStatus("Processing...");
                     }
                 } else if (state === "CAPTURING") {
-                     consecutiveGoodFrames++;
-                     if (consecutiveGoodFrames > 5) {
-                         capture();
-                     }
+                    // 🚀 STREAMLINED: Capture immediately with minimal delay
+                    capture();
                 }
             }
 
@@ -193,6 +191,9 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
             });
             
             camera.start().then(() => {
+                // 📏 FIX: Ensure canvas has matching dimensions immediately
+                canvasElement.width = 640;
+                canvasElement.height = 640;
                 updateStatus("Align Face");
                 window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'READY' }));
             })

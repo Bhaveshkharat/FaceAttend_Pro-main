@@ -98,6 +98,41 @@ class FaceService {
       return { matched: false, error: errorMessage };
     }
   }
+
+  /**
+   * Delete face profile from MongoDB
+   * @param {string} userId - ID of the user
+   */
+  async deleteFace(userId) {
+    try {
+      const mongoose = require('mongoose');
+      const db = mongoose.connection.useDb(process.env.MONGO_URI.split('/').pop().split('?')[0] || 'face_attendance');
+      const faceCollection = db.collection('face_profiles');
+
+      const result = await faceCollection.deleteOne({ userId });
+      return { success: result.deletedCount > 0, message: result.deletedCount > 0 ? "Face deleted" : "Face not found" };
+    } catch (error) {
+      console.error('Delete Face Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get list of userIds with registered faces
+   */
+  async getRegisteredFaces() {
+    try {
+      const mongoose = require('mongoose');
+      const db = mongoose.connection.useDb(process.env.MONGO_URI.split('/').pop().split('?')[0] || 'face_attendance');
+      const faceCollection = db.collection('face_profiles');
+
+      const faces = await faceCollection.find({}, { projection: { userId: 1, _id: 0 } }).toArray();
+      return faces.map(f => f.userId);
+    } catch (error) {
+      console.error('Get Registered Faces Error:', error);
+      return [];
+    }
+  }
 }
 
 module.exports = new FaceService();

@@ -16,4 +16,10 @@ console.log("REGISTER:", register);
 router.post("/recognize", upload.single("image"), recognize);
 console.log("RECOGNIZE:", recognize);
 
+// REGISTERED FACES LIST
+router.get("/registered", require("../controllers/face.controller").getRegisteredStatus);
+
+// DELETE FACE
+router.delete("/profile/:userId", require("../controllers/face.controller").deleteFace);
+
 module.exports = router;

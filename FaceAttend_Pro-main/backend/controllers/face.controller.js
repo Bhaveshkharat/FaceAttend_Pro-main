@@ -114,7 +114,30 @@ const recognize = async (req, res) => {
 
 
 
+const getRegisteredStatus = async (req, res) => {
+  try {
+    const { getRegisteredFaces } = require("../services/face.service");
+    const userIds = await getRegisteredFaces();
+    return res.json({ success: true, registeredUserIds: userIds });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const deleteFace = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { deleteFace: removeFace } = require("../services/face.service");
+    const result = await removeFace(userId);
+    return res.json(result);
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   register,
-  recognize
+  recognize,
+  getRegisteredStatus,
+  deleteFace
 };
