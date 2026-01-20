@@ -7,7 +7,7 @@ async function testRegistration() {
     try {
         // Test 1: Health check
         console.log('Testing Python service health...');
-        const health = await axios.get('http://127.0.0.1:8000/');
+        const health = await axios.get('http://localhost:8000/');
         console.log('✅ Health check:', health.data);
 
         // Test 2: Check if we can reach register endpoint
@@ -27,7 +27,7 @@ async function testRegistration() {
         formData.append('image', fs.createReadStream(testImagePath));
         formData.append('userId', 'test-user-123');
 
-        const response = await axios.post('http://127.0.0.1:8000/register', formData, {
+        const response = await axios.post('http://localhost:8000/register', formData, {
             headers: {
                 ...formData.getHeaders()
             }
