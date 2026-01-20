@@ -121,7 +121,7 @@ exports.markAttendanceByFace = async (req, res) => {
     const result = await faceService.recognizeFace(req.file.path);
 
     if (!result.matched) {
-      return res.status(404).json({ message: "Face not recognized" });
+      return res.status(404).json({ success: false, message: "No such face registered" });
     }
 
     const today = getLocalDate();
