@@ -60,11 +60,6 @@ export default function FaceRegister() {
       } else {
         Alert.alert("Failed", res.data?.message || "Face registration failed");
       }
-
-
-
-      // Go back to dashboard (not employee register!)
-      router.replace("/(tabs)/dashboard");
     } catch (err: any) {
       console.log("FACE REGISTER ERROR:", JSON.stringify(err?.response?.data || err, null, 2));
       console.log("ERROR MESSAGE:", err?.message);

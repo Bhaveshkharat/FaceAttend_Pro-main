@@ -43,11 +43,11 @@ export default function AttendanceCamera() {
         skipProcessing: true
       });
 
-      // ⚡ OPTIMIZATION: Resize to 600px height for faster upload & processing
+      // ⚡ OPTIMIZATION: Resize to 480px height for faster upload & processing
       const resized = await manipulateAsync(
         photo.uri,
-        [{ resize: { height: 600 } }],
-        { compress: 0.7, format: SaveFormat.JPEG }
+        [{ resize: { height: 480 } }],
+        { compress: 0.5, format: SaveFormat.JPEG }
       );
 
       const formData = new FormData();
@@ -66,7 +66,7 @@ export default function AttendanceCamera() {
           "Success",
           `${res.data?.name} checked ${res.data.type === "IN" ? "in" : "out"}`
         );
-        router.replace("/(tabs)/dashboard");
+        router.replace("/(tabs)/history");
       } else {
         Alert.alert("Failed", res.data?.message || "Face not recognized");
       }

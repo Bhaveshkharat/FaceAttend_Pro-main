@@ -190,12 +190,27 @@ export default function Profile() {
                 <Ionicons name="chevron-forward" size={20} color="#999" />
               </TouchableOpacity>
 
-              {item.hasFace && (
+              {item.hasFace ? (
                 <TouchableOpacity
                   style={styles.deleteFaceBtn}
                   onPress={() => handleDeleteFace(item._id, item.name)}
                 >
                   <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.registerFaceBtn}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(attendance)/face-register",
+                      params: {
+                        userId: item._id,
+                        name: item.name,
+                      },
+                    })
+                  }
+                >
+                  <Ionicons name="person-add-outline" size={20} color="#2563eb" />
                 </TouchableOpacity>
               )}
             </View>
@@ -280,6 +295,13 @@ const styles = StyleSheet.create({
   },
   deleteFaceBtn: {
     backgroundColor: "#fee2e2",
+    padding: 10,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  registerFaceBtn: {
+    backgroundColor: "#eff6ff",
     padding: 10,
     borderRadius: 12,
     alignItems: "center",

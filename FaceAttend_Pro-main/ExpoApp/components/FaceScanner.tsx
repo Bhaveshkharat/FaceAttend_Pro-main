@@ -157,10 +157,10 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
         function capture() {
             if (isCaptured) return;
             isCaptured = true;
-            const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8);
+            const base64Image = canvasElement.toDataURL('image/jpeg', 0.5);
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'CAPTURE',
-                image: dataUrl
+                image: base64Image
             }));
         }
 

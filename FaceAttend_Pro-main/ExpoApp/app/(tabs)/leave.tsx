@@ -11,6 +11,7 @@ import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { api } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 type ExceptionItem = {
   name: string;
@@ -18,6 +19,7 @@ type ExceptionItem = {
 };
 
 export default function Leave() {
+  const { user } = useAuth();
   const [data, setData] = useState<ExceptionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(new Date());
@@ -36,7 +38,7 @@ export default function Leave() {
     try {
       setLoading(true);
       // Backend handles ?date=YYYY-MM-DD
-      const res = await api.get(`/attendance/exceptions/today?date=${formattedDate}`);
+      const res = await api.get(`/attendance/exceptions/today?date=${formattedDate}&managerId=${user?._id}`);
       setData(res.data.data || []);
     } catch (err) {
       console.log("LEAVE PAGE ERROR:", err);

@@ -406,6 +406,17 @@ exports.getTodayExceptions = async (req, res) => {
       userId: { $in: employeeIds }
     });
 
+    // ✅ Get current time in IST for comparison
+    const nowIST = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date());
+
+    const nowMins = timeToMinutes(nowIST);
+
     const attendanceMap = {};
     attendance.forEach((a) => {
       attendanceMap[a.userId.toString()] = a;

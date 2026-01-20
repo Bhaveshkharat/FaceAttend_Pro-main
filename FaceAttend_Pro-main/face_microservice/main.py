@@ -37,7 +37,7 @@ face_collection = db.face_profiles
 MODEL_NAME = os.getenv("FACE_MODEL", "buffalo_sc")
 print(f"Initializing InsightFace model: {MODEL_NAME}...")
 face_app = FaceAnalysis(name=MODEL_NAME)
-face_app.prepare(ctx_id=-1, det_size=(640, 640))
+face_app.prepare(ctx_id=-1, det_size=(320, 320))
 print(f"Model {MODEL_NAME} loaded successfully")
 
 def process_image(file_bytes):
