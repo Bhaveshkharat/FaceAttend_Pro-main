@@ -8,6 +8,15 @@ const { markAttendance } = require("./attendance.controller");
 // REGISTER FACE
 const register = async (req, res) => {
   try {
+    console.log("REGISTER REQUEST RECEIVED");
+    console.log("Body:", req.body);
+    console.log("File:", req.file);
+
+    if (!req.file) {
+      console.error("REGISTER ERROR: No file uploaded");
+      return res.status(400).json({ success: false, message: "No image file uploaded" });
+    }
+
     const { userId, name } = req.body;
     const imagePath = req.file.path;
 
@@ -15,13 +24,21 @@ const register = async (req, res) => {
 
     return res.json(result);
   } catch (err) {
-    console.error("FACE REGISTER ERROR:", err.message);
+    console.error("FACE REGISTER ERROR:", err);
     return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 const recognize = async (req, res) => {
   try {
+    console.log("RECOGNIZE REQUEST RECEIVED");
+    console.log("File:", req.file);
+
+    if (!req.file) {
+      console.error("RECOGNIZE ERROR: No file uploaded");
+      return res.status(400).json({ success: false, message: "No image file uploaded" });
+    }
+
     const imagePath = req.file.path;
     const result = await recognizeFace(imagePath);
 
@@ -46,7 +63,7 @@ const recognize = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("ATTENDANCE ERROR:", err.message);
+    console.error("ATTENDANCE ERROR:", err);
     return res.status(500).json({
       success: false,
       message: err.message

@@ -58,9 +58,13 @@ async def register_face(
 ):
     try:
         contents = await image.read()
+        print(f"Received registration request for userId: {userId}, image size: {len(contents)} bytes")
+        
         img_bgr = process_image(contents)
+        print("Image processed successfully")
 
         faces = face_app.get(img_bgr)
+        print(f"Detected {len(faces)} faces")
 
         if len(faces) == 0:
             raise HTTPException(status_code=400, detail="No face detected")
@@ -73,32 +77,36 @@ async def register_face(
         
         embedding = face.embedding.tolist()  # Convert to standard list for Storage
 
+        print(f"Saving embedding to MongoDB for userId: {userId}")
         # Save to MongoDB
         # Using update_one with upsert to replace existing if any
-        face_collection.update_one(
+        res = face_collection.update_one(
             {"userId": userId},
             {
                 "$set": {
                     "userId": userId,
                     "embedding": embedding,
-                    "createdAt": os.getenv("CURRENT_DATE", "NOW") # Just placeholder
+                    "updatedAt": os.getenv("CURRENT_DATE", "NOW") 
                 }
             },
             upsert=True
         )
+        print(f"MongoDB update result: {res.modified_count} modified, {res.upserted_id} upserted")
 
         return {"success": True, "message": "Face registered successfully"}
 
     except HTTPException as he:
         raise he
     except Exception as e:
-        print(f"Registration Error: {e}")
+        print(f"Registration Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/verify")
 async def verify_face(image: UploadFile = File(...)):
     try:
         contents = await image.read()
+        print(f"Received verification request, image size: {len(contents)} bytes")
+            
         img_bgr = process_image(contents)
 
         faces = face_app.get(img_bgr)
@@ -151,7 +159,7 @@ async def verify_face(image: UploadFile = File(...)):
     except HTTPException as he:
         raise he
     except Exception as e:
-        print(f"Verification Error: {e}")
+        print(f"Verification Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

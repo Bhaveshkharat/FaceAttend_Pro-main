@@ -25,8 +25,16 @@ class FaceService {
 
       return response.data;
     } catch (error) {
-      console.error('Face Service Registration Error:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.detail || 'Face registration failed');
+      const errorDetail = {
+        message: error.message,
+        data: error.response?.data,
+        status: error.response?.status,
+        url: `${PYTHON_SERVICE_URL}/register`
+      };
+
+      console.error('Face Service Registration Error:', errorDetail);
+      const errorMessage = error.response?.data?.detail || error.response?.data?.message || error.message || 'Face registration failed';
+      throw new Error(errorMessage);
     }
   }
 
@@ -66,8 +74,14 @@ class FaceService {
       }
 
     } catch (error) {
-      console.error('Face Service Verification Error:', error.response?.data || error.message);
-      // Return matched:false instead of throwing to let controller handle it gracefully
+      const errorDetail = {
+        context: 'recognizeFace',
+        message: error.message,
+        data: error.response?.data,
+        status: error.response?.status,
+        url: `${PYTHON_SERVICE_URL}/verify`
+      };
+      console.error('Face Service Verification Error:', errorDetail);
       return { matched: false, error: error.message };
     }
   }
