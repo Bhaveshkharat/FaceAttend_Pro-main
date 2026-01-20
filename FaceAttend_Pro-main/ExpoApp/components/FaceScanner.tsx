@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, StyleSheet, ActivityIndicator, Text, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { Camera } from 'expo-camera';
 
 interface Props {
     onCapture: (base64Image: string) => void;
@@ -10,6 +11,21 @@ interface Props {
 export default function FaceScanner({ onCapture, onCancel }: Props) {
     const webviewRef = useRef<WebView>(null);
     const [loading, setLoading] = useState(true);
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            const { status } = await Camera.requestCameraPermissionsAsync();
+            setHasPermission(status === 'granted');
+        })();
+    }, []);
+
+    if (hasPermission === null) {
+        return <View style={styles.loading}><ActivityIndicator /></View>;
+    }
+    if (hasPermission === false) {
+        return <View style={styles.loading}><Text style={{ color: 'white' }}>No Camera Permission</Text></View>;
+    }
 
     // HTML Content with MediaPipe Face Mesh
     const htmlContent = `
@@ -64,34 +80,19 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
         
         let isCaptured = false;
         let consecutiveGoodFrames = 0;
-        const REQUIRED_FRAMES = 5; // Require 5 consecutive good frames to ensure stability
+        const REQUIRED_FRAMES = 5; 
         
-        // Blink Detection Thresholds
-        const BLINK_THRESHOLD = 0.5; // Aspect ratio of eye (Open check)
-        // We want to verify liveness by checking for movements or just good face quality? 
-        // User asked for "Blink / Head Movement" for liveness.
-        // Simple liveness: Ensure user is looking at camera and face is large enough.
-        // Advanced: Ask user to blink.
-        // Let's implement: "Look Straight & Blink" state machine.
-        
-        let state = "LOOK_STRAIGHT"; // LOOK_STRAIGHT -> BLINK_NOW -> CAPTURING
+        let state = "LOOK_STRAIGHT"; 
         let blinkDetected = false;
 
         function updateStatus(msg) {
             statusDiv.innerText = msg;
         }
 
-        // Helper: Euclidean distance
         function distance(p1, p2) {
             return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
         }
 
-        // Calculate Eye Aspect Ratio (EAR)
-        // Indices for Left Eye: 33, 160, 158, 133, 153, 144
-        // Indices for Right Eye: 362, 385, 387, 263, 373, 380
-        // MediaPipe FaceMesh Landmarks: 
-        // L: Top: 159, Bottom: 145, Left: 33, Right: 133
-        // R: Top: 386, Bottom: 374, Left: 362, Right: 263
         function getEAR(landmarks, eye) {
             const top = eye === 'left' ? 159 : 386;
             const bottom = eye === 'left' ? 145 : 374;
@@ -113,13 +114,6 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
           if (results.multiFaceLandmarks && results.multiFaceLandmarks.length === 1) {
             const landmarks = results.multiFaceLandmarks[0];
             
-            // Draw mesh (optional, maybe just box)
-            // drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {color: '#C0C0C070', lineWidth: 1});
-
-            // 1. Check Face Size/Position (Basic "Look Straight")
-            // Face should be roughly centered and large enough
-            // Using bounding box from landmarks
-            // Top: 10, Bottom: 152, Left: 234, Right: 454
             const faceHeight = distance(landmarks[10], landmarks[152]);
             
             if (faceHeight < 0.4) {
@@ -129,22 +123,18 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
                 updateStatus("Move Back");
                 consecutiveGoodFrames = 0;
             } else {
-                // 2. Liveness Logic
                 const leftEAR = getEAR(landmarks, 'left');
                 const rightEAR = getEAR(landmarks, 'right');
                 const avgEAR = (leftEAR + rightEAR) / 2;
 
-                // Thresholds need tuning. Approx: Open > 0.25, Closed < 0.15
-                // console.log(avgEAR);
-
                 if (state === "LOOK_STRAIGHT") {
                     updateStatus("Blink to Capture");
-                    if (avgEAR < 0.18) { // Blinked!
+                    if (avgEAR < 0.18) { 
                          state = "BLINK_DETECTED";
                          blinkDetected = true;
                     }
                 } else if (state === "BLINK_DETECTED") {
-                    if (avgEAR > 0.25) { // Eyes Open again
+                    if (avgEAR > 0.25) { 
                         state = "CAPTURING";
                         updateStatus("Processing...");
                     }
@@ -169,10 +159,7 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
         function capture() {
             if (isCaptured) return;
             isCaptured = true;
-            
             const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8);
-            
-            // Send to React Native
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'CAPTURE',
                 image: dataUrl
@@ -192,23 +179,28 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
         
         faceMesh.onResults(onResults);
 
-        const camera = new Camera(videoElement, {
-          onFrame: async () => {
-            await faceMesh.send({image: videoElement});
-          },
-          width: 640,
-          height: 640
-        });
-        
-        // Start Camera
-        camera.start().then(() => {
-            updateStatus("Align Face");
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'READY' }));
-        })
-        .catch(err => {
-            updateStatus("Camera Error: " + err.message);
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', message: err.message }));
-        });
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            updateStatus("Camera API not supported in this WebView");
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', message: 'Camera API not supported' }));
+        } else {
+            const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await faceMesh.send({image: videoElement});
+            },
+            width: 640,
+            height: 640
+            });
+            
+            camera.start().then(() => {
+                updateStatus("Align Face");
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'READY' }));
+            })
+            .catch(err => {
+                updateStatus("Camera Error: " + err.message);
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', message: err.message }));
+            });
+        }
 
       </script>
     </body>
@@ -222,10 +214,11 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
                 setLoading(false);
             }
             if (data.type === 'CAPTURE') {
-                onCapture(data.image); // This is Data URL
+                onCapture(data.image);
             }
             if (data.type === 'ERROR') {
                 console.error("WebView Camera Error:", data.message);
+                // Optionally handle fallback here
             }
         } catch (e) {
             console.error("JSON Parse Error", e);
@@ -236,7 +229,7 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
         <View style={styles.container}>
             <WebView
                 ref={webviewRef}
-                source={{ html: htmlContent }}
+                source={{ html: htmlContent, baseUrl: 'https://localhost' }}
                 style={styles.webview}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
@@ -244,6 +237,14 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
                 mediaPlaybackRequiresUserAction={false}
                 onMessage={handleMessage}
                 originWhitelist={['*']}
+                // Important props for Android permissions
+                androidLayerType="hardware"
+                mixedContentMode="always"
+                mediaCapturePermissionGrantType="grant"
+                // @ts-ignore
+                onPermissionRequest={(req) => {
+                    req.grant(['camera', 'microphone']);
+                }}
             />
             {loading && (
                 <View style={styles.loading}>

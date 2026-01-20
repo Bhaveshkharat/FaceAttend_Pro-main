@@ -11,7 +11,7 @@ const register = async (req, res) => {
     const { userId, name } = req.body;
     const imagePath = req.file.path;
 
-    const result = await registerFace(imagePath, { userId, name });
+    const result = await registerFace(imagePath, userId);
 
     return res.json(result);
   } catch (err) {

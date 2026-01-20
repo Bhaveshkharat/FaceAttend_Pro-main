@@ -93,7 +93,7 @@ export default function History() {
   );
 
   const filteredData = data.filter((item) =>
-    item.user.name.toLowerCase().includes(search.toLowerCase())
+    item.user?.name?.toLowerCase().includes(search.toLowerCase()) ?? false
   );
 
   const getStatusColor = (status: string) => {
@@ -170,7 +170,7 @@ export default function History() {
           }
           renderItem={({ item }) => (
             <View style={styles.row}>
-              <Text style={styles.cell}>{item.user.name}</Text>
+              <Text style={styles.cell}>{item.user?.name || "Unknown"}</Text>
               <Text style={styles.cell}>{item.checkIn || "--"}</Text>
               <Text style={styles.cell}>{item.checkOut || "--"}</Text>
               <Text

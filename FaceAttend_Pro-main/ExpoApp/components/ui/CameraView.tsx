@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useCameraPermissions } from "expo-camera";
-import FaceScanner from "../FaceScanner";
+import { CameraView as ExpoCamera, useCameraPermissions } from "expo-camera";
+import { View, TouchableOpacity, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { useRef, useState } from "react";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 type Props = {
   onCapture: (photo: { uri: string }) => void;
@@ -10,9 +10,12 @@ type Props = {
 
 export default function CameraView({ onCapture, disabled = false }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
-  const [cameraActive, setCameraActive] = useState(false);
+  const cameraRef = useRef<any>(null);
+
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   if (!permission) {
+    // Camera permissions are still loading.
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2563eb" />
@@ -21,6 +24,7 @@ export default function CameraView({ onCapture, disabled = false }: Props) {
   }
 
   if (!permission.granted) {
+    // Camera permissions are not granted yet.
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.message}>We need your permission to show the camera</Text>
@@ -31,29 +35,57 @@ export default function CameraView({ onCapture, disabled = false }: Props) {
     );
   }
 
-  const handleCapture = (base64Image: string) => {
-    // Convert base64 to a uri-like object if needed, or just pass uri
-    // FaceScanner returns data:image/jpeg;base64,...
-    onCapture({ uri: base64Image });
-    setCameraActive(false);
+
+
+  const takePhoto = async () => {
+    if (!cameraRef.current || disabled || !isCameraReady) return;
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.6,
+        skipProcessing: true,
+      });
+
+      // ⚡ OPTIMIZATION: Resize to 600px height
+      const resized = await manipulateAsync(
+        photo.uri,
+        [{ resize: { height: 600 } }],
+        { compress: 0.7, format: SaveFormat.JPEG }
+      );
+
+      onCapture(resized);
+    } catch (err) {
+      console.log("CAMERA ERROR:", err);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {cameraActive ? (
-        <FaceScanner onCapture={handleCapture} />
-      ) : (
-        <View style={styles.centerContainer}>
-          <Text style={styles.previewText}>Click below to start Face Scan</Text>
-          <TouchableOpacity
-            style={[styles.button, disabled && styles.buttonDisabled]}
-            onPress={() => setCameraActive(true)}
-            disabled={disabled}
-          >
-            <Text style={styles.buttonText}>
-              {disabled ? "Processing..." : "Start Face Scan"}
-            </Text>
-          </TouchableOpacity>
+      <ExpoCamera
+        key={permission.granted ? "granted" : "denied"}
+        ref={cameraRef}
+        style={styles.camera}
+        facing="front"
+        ratio="16:9"
+        onCameraReady={() => setIsCameraReady(true)}
+      />
+
+      {isCameraReady && (
+        <TouchableOpacity
+          style={[styles.button, disabled && styles.buttonDisabled]}
+          onPress={takePhoto}
+          disabled={disabled}
+        >
+          <Text style={styles.buttonText}>
+            {disabled ? "Processing..." : "Capture Face"}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {!isCameraReady && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={{ color: "white", marginTop: 10 }}>Starting camera...</Text>
         </View>
       )}
     </View>
@@ -61,17 +93,13 @@ export default function CameraView({ onCapture, disabled = false }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f3f4f6' },
+  container: { flex: 1 },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-  },
-  previewText: {
-    fontSize: 18,
-    marginBottom: 20,
-    color: '#374151'
+    backgroundColor: "#fff",
   },
   message: {
     textAlign: "center",
@@ -79,7 +107,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#374151",
   },
+  camera: { flex: 1 },
   button: {
+    position: "absolute",
+    bottom: 30,
+    alignSelf: "center",
     backgroundColor: "#2563eb",
     paddingVertical: 14,
     paddingHorizontal: 28,
@@ -98,5 +130,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 20,
   },
 });

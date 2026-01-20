@@ -39,6 +39,10 @@ export default function FaceRegister() {
       formData.append("userId", userId as string);
       formData.append("name", name as string);
 
+      console.log("Sending face registration request...");
+      console.log("UserId:", userId);
+      console.log("Name:", name);
+
       const res = await api.post("/face/register", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -55,10 +59,12 @@ export default function FaceRegister() {
       // Go back to dashboard (not employee register!)
       router.replace("/(tabs)/dashboard");
     } catch (err: any) {
-      console.log("FACE REGISTER ERROR:", err?.response?.data || err);
+      console.log("FACE REGISTER ERROR:", JSON.stringify(err?.response?.data || err, null, 2));
+      console.log("ERROR MESSAGE:", err?.message);
+      console.log("ERROR RESPONSE STATUS:", err?.response?.status);
       Alert.alert(
         "Failed",
-        err?.response?.data?.message || "Failed to register face"
+        err?.response?.data?.message || err?.message || "Failed to register face"
       );
     } finally {
       setLoading(false);

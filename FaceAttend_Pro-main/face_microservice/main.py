@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from PIL import Image
 
 # Load environment variables
-load_dotenv(dotenv_path="../backend/.env")  # Use backend .env
+load_dotenv()  # Load from current directory (.env)
 
 app = FastAPI()
 
@@ -155,4 +155,6 @@ async def verify_face(image: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+
