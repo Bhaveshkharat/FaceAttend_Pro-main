@@ -55,8 +55,9 @@ export default function FaceRegister() {
       });
 
       if (res.data?.success) {
-        Alert.alert("Success", "Face registered successfully");
-        router.replace("/(tabs)/dashboard");
+        Alert.alert("Success", "Face registered successfully", [
+          { text: "OK", onPress: () => router.replace("/(tabs)/dashboard") },
+        ]);
       } else {
         Alert.alert("Failed", res.data?.message || "Face registration failed");
       }
