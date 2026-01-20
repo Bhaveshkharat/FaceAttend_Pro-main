@@ -1,9 +1,9 @@
 import { View, Text, Alert, StyleSheet } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import CameraView from "@/components/ui/CameraView";
+import FaceScanner from "@/components/FaceScanner";
 import { api } from "@/services/api";
-import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system/legacy";
 
 export default function FaceRegister() {
   const router = useRouter();
@@ -17,22 +17,26 @@ export default function FaceRegister() {
     return null;
   }
 
-  const handleCapture = async (photo: any) => {
+  const handleCapture = async (base64Image: string) => {
     try {
       setLoading(true);
 
-      // ⚡ OPTIMIZATION: Resize image to 600px height for faster AI processing
-      const resized = await manipulateAsync(
-        photo.uri,
-        [{ resize: { height: 600 } }],
-        { compress: 0.7, format: SaveFormat.JPEG }
-      );
+      // ⚡ Convert Base64 to Local File for Multer
+      const fileName = `face_${Date.now()}.jpg`;
+      const fileUri = (FileSystem.cacheDirectory || "") + fileName;
+
+      // Remove base64 prefix if exists
+      const base64Data = base64Image.replace(/^data:image\/jpeg;base64,/, "");
+
+      await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+        encoding: "base64", // Standard string for encoding
+      });
 
       const formData = new FormData();
 
       formData.append("image", {
-        uri: resized.uri,
-        name: "face.jpg",
+        uri: fileUri,
+        name: fileName,
         type: "image/jpeg",
       } as any);
 
@@ -75,9 +79,8 @@ export default function FaceRegister() {
     <View style={styles.container}>
       <Text style={styles.title}>Register Face</Text>
 
-      <CameraView
+      <FaceScanner
         onCapture={handleCapture}
-        disabled={loading}
       />
     </View>
   );

@@ -85,19 +85,29 @@ async def register_face(
         target_embedding = np.array(face.embedding, dtype=np.float32)
 
         # 🔍 DUPLICATE DETECTION: Check if this face already belongs to someone else
-        DUPLICATE_THRESHOLD = 0.65
+        # Lowering to 0.50 to be more aggressive in catching duplicates
+        DUPLICATE_THRESHOLD = 0.50
         profiles = list(face_collection.find({"userId": {"$ne": userId}, "embedding": {"$exists": True}}))
         
+        best_dup_score = -1.0
+        best_dup_id = None
+
         for profile in profiles:
             stored_emb = np.array(profile['embedding'], dtype=np.float32)
             sim = calculate_similarity(target_embedding, stored_emb)
+            
+            if sim > best_dup_score:
+                best_dup_score = sim
+                best_dup_id = profile['userId']
+
             if sim > DUPLICATE_THRESHOLD:
-                print(f"DUPLICATE DETECTED: New request for {userId} matches existing {profile['userId']} with score {sim}")
+                print(f"DUPLICATE REJECTED: Request for {userId} matches {profile['userId']} with score {sim}")
                 raise HTTPException(
                     status_code=400, 
-                    detail="Face already registered under a different ID. Please contact administrator."
+                    detail=f"Face already registered under ID: {profile['userId']} (Score: {sim:.2f})"
                 )
 
+        print(f"Registration Check: Best existing match for {userId} was {best_dup_id} with score {best_dup_score}")
         print(f"Saving embedding to MongoDB for userId: {userId}")
         # Save to MongoDB
         res = face_collection.update_one(
