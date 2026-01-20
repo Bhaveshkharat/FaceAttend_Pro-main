@@ -1,5 +1,17 @@
 [phases.setup]
-nixPkgs = ["python310", "gcc", "cmake"]
+nixPkgs = [
+    "python310",
+    "gcc",
+    "cmake",
+    "libGL",
+    "glib",
+    "libxcb",
+    "libSM",
+    "libICE",
+    "libX11",
+    "libXext",
+    "libXrender"
+]
 
 [phases.install]
 cmds = ["pip install -r requirements.txt"]
