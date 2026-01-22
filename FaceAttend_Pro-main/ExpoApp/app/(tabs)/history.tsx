@@ -66,19 +66,30 @@ export default function History() {
       setLoading(true);
       const url = `${api.defaults.baseURL}/attendance/export?date=${formattedDate}&managerId=${user?._id}`;
       const fileName = `Attendance_${formattedDate}.xlsx`;
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      const { uri } = await FileSystem.downloadAsync(url, fileUri);
-
-      if (Platform.OS === "android" || Platform.OS === "ios") {
+      // ✅ WEB: Download file directly
+      if (Platform.OS === "web") {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        Alert.alert("Success", "Excel file downloaded successfully");
+      } else {
+        // ✅ ANDROID/iOS: Use FileSystem and Sharing
+        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+        const { uri } = await FileSystem.downloadAsync(url, fileUri);
         await Sharing.shareAsync(uri, {
           mimeType:
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           dialogTitle: "Export Attendance",
           UTI: "com.microsoft.excel.xlsx",
         });
-      } else {
-        Alert.alert("Success", "Excel file generated successfully");
       }
     } catch (err) {
       console.log("EXPORT ERROR:", err);

@@ -1,10 +1,11 @@
-import { View, Text, Alert, StyleSheet } from "react-native";
+import { View, Text, Alert, StyleSheet, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import FaceScanner from "@/components/FaceScanner";
 import { api } from "@/services/api";
 import * as FileSystem from "expo-file-system/legacy";
 import { useAuth } from "@/context/AuthContext";
+import { WebAlert } from "@/components/ui/WebAlert";
 
 export default function FaceRegister() {
   const router = useRouter();
@@ -12,6 +13,11 @@ export default function FaceRegister() {
   const { userId, name } = useLocalSearchParams();
 
   const [loading, setLoading] = useState(false);
+  const [webAlert, setWebAlert] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
 
   if (!userId || !name) {
     Alert.alert("Error", "Missing employee data");
@@ -23,24 +29,39 @@ export default function FaceRegister() {
     try {
       setLoading(true);
 
-      // ⚡ Convert Base64 to Local File for Multer
       const fileName = `face_${Date.now()}.jpg`;
-      const fileUri = (FileSystem.cacheDirectory || "") + fileName;
-
-      // Remove base64 prefix if exists
-      const base64Data = base64Image.replace(/^data:image\/jpeg;base64,/, "");
-
-      await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-        encoding: "base64", // Standard string for encoding
-      });
-
       const formData = new FormData();
 
-      formData.append("image", {
-        uri: fileUri,
-        name: fileName,
-        type: "image/jpeg",
-      } as any);
+      // ✅ WEB: Convert base64 to Blob directly
+      if (Platform.OS === "web") {
+        // Remove base64 prefix
+        const base64Data = base64Image.replace(/^data:image\/jpeg;base64,/, "");
+        
+        // Convert base64 to binary string
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Create Blob and append to FormData
+        const blob = new Blob([bytes], { type: "image/jpeg" });
+        formData.append("image", blob, fileName);
+      } else {
+        // ✅ ANDROID: Use FileSystem as before
+        const fileUri = (FileSystem.cacheDirectory || "") + fileName;
+        const base64Data = base64Image.replace(/^data:image\/jpeg;base64,/, "");
+
+        await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+          encoding: "base64",
+        });
+
+        formData.append("image", {
+          uri: fileUri,
+          name: fileName,
+          type: "image/jpeg",
+        } as any);
+      }
 
       formData.append("userId", userId as string);
       formData.append("name", name as string);
@@ -54,21 +75,51 @@ export default function FaceRegister() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
+      console.log("Face registration response:", res.data);
+
       if (res.data?.success) {
-        Alert.alert("Success", "Face registered successfully", [
-          { text: "OK", onPress: () => router.replace("/dashboard") },
-        ], { cancelable: false });
+        console.log("Showing success alert: Face registered successfully");
+        
+        // ✅ WEB: Use custom WebAlert component
+        if (Platform.OS === "web") {
+          setWebAlert({
+            visible: true,
+            title: "Success",
+            message: "Face registered successfully",
+          });
+        } else {
+          // ✅ ANDROID: Use React Native Alert
+          Alert.alert("Success", "Face registered successfully", [
+            { text: "OK", onPress: () => router.replace("/(tabs)/dashboard") },
+          ], { cancelable: false });
+        }
       } else {
-        Alert.alert("Failed", res.data?.message || "Face registration failed");
+        if (Platform.OS === "web") {
+          setWebAlert({
+            visible: true,
+            title: "Failed",
+            message: res.data?.message || "Face registration failed",
+          });
+        } else {
+          Alert.alert("Failed", res.data?.message || "Face registration failed");
+        }
       }
     } catch (err: any) {
       console.log("FACE REGISTER ERROR:", JSON.stringify(err?.response?.data || err, null, 2));
       console.log("ERROR MESSAGE:", err?.message);
       console.log("ERROR RESPONSE STATUS:", err?.response?.status);
-      Alert.alert(
-        "Failed",
-        err?.response?.data?.message || err?.message || "Failed to register face"
-      );
+      
+      const errorMessage = err?.response?.data?.message || err?.message || "Failed to register face";
+      
+      if (Platform.OS === "web") {
+        setWebAlert({
+          visible: true,
+          title: "Failed",
+          message: errorMessage,
+        });
+      } else {
+        Alert.alert("Failed", errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -81,6 +132,21 @@ export default function FaceRegister() {
       <FaceScanner
         onCapture={handleCapture}
       />
+
+      {/* ✅ WEB: Custom Alert Modal */}
+      {Platform.OS === "web" && (
+        <WebAlert
+          visible={webAlert.visible}
+          title={webAlert.title}
+          message={webAlert.message}
+          onClose={() => {
+            setWebAlert({ visible: false, title: "", message: "" });
+            if (webAlert.title === "Success") {
+              router.replace("/(tabs)/dashboard");
+            }
+          }}
+        />
+      )}
     </View>
   );
 }

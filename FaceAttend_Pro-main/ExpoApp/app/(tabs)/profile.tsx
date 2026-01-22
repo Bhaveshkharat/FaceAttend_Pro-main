@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { useFocusEffect } from "expo-router";
@@ -14,6 +15,7 @@ import { router } from "expo-router";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { Alert } from "react-native";
+import { WebAlert } from "@/components/ui/WebAlert";
 
 type Employee = {
   _id: string;
@@ -29,6 +31,11 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { user, logout } = useAuth();
+  const [webAlert, setWebAlert] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
   const handleLogout = () => {
     Alert.alert(
       "Logout",
@@ -81,48 +88,92 @@ export default function Profile() {
   };
 
   const loadEmployees = useCallback(async () => {
+    if (!user?._id) {
+      console.log("PROFILE: No user ID available");
+      return;
+    }
+
     try {
       setLoading(true);
 
       // fetch employees
-      const employeesRes = await api.get(`/employees?managerId=${user?._id}`);
+      const employeesRes = await api.get(`/employees?managerId=${user._id}`);
+      console.log("Employees response:", employeesRes.data);
 
       // fetch attendance summary
-      const summaryRes = await api.get(`/attendance/summary?managerId=${user?._id}`);
+      const summaryRes = await api.get(`/attendance/summary?managerId=${user._id}`);
+      console.log("Summary response:", summaryRes.data);
 
       // fetch registered face IDs
-      let registeredIds = [];
+      let registeredIds: string[] = [];
       try {
-        const registeredRes = await api.get(`/face/registered?managerId=${user?._id}`);
-        registeredIds = registeredRes.data.registeredUserIds || [];
-      } catch (faceErr) {
-        console.log("FACE REGISTER FETCH FAILED (Optional):", faceErr);
+        const registeredRes = await api.get(`/face/registered?managerId=${user._id}`);
+        registeredIds = (registeredRes.data.registeredUserIds || []).map((id: any) => String(id));
+        console.log("Registered faces:", registeredIds);
+      } catch (faceErr: any) {
+        console.log("FACE REGISTER FETCH FAILED (Optional):", faceErr?.response?.data || faceErr);
         // Not critical, continue with empty array
+      }
+
+      // Validate response structure
+      if (!employeesRes.data?.success || !Array.isArray(employeesRes.data.data)) {
+        console.error("Invalid employees response:", employeesRes.data);
+        throw new Error("Invalid employees data format");
+      }
+
+      if (!summaryRes.data?.success || !Array.isArray(summaryRes.data.data)) {
+        console.error("Invalid summary response:", summaryRes.data);
+        throw new Error("Invalid summary data format");
       }
 
       const summaryMap = summaryRes.data.data.reduce(
         (acc: any, curr: any) => {
-          acc[curr.userId] = curr;
+          if (curr.userId) {
+            // Convert userId to string for consistent comparison
+            acc[String(curr.userId)] = curr;
+          }
           return acc;
         },
         {}
       );
 
-      const merged = employeesRes.data.data.map((emp: any) => ({
-        ...emp,
-        present: summaryMap[emp._id]?.present || 0,
-        absent: summaryMap[emp._id]?.absent || 0,
-        hasFace: registeredIds.includes(emp._id),
-      }));
+      const merged = employeesRes.data.data.map((emp: any) => {
+        const empId = String(emp._id);
+        return {
+          ...emp,
+          present: summaryMap[empId]?.present || 0,
+          absent: summaryMap[empId]?.absent || 0,
+          hasFace: registeredIds.includes(empId),
+        };
+      });
 
       setEmployees(merged);
-    } catch (err) {
-      console.log("PROFILE ERROR:", err);
+    } catch (err: any) {
+      console.error("PROFILE ERROR:", err?.response?.data || err?.message || err);
+      console.error("Error details:", {
+        status: err?.response?.status,
+        data: err?.response?.data,
+        message: err?.message,
+      });
+      
+      const errorMessage = err?.response?.data?.message || err?.message || "Failed to load employees";
+      
+      // Show error to user
+      if (Platform.OS === "web") {
+        setWebAlert({
+          visible: true,
+          title: "Error",
+          message: errorMessage,
+        });
+      } else {
+        Alert.alert("Error", errorMessage);
+      }
+      
       setEmployees([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?._id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -221,6 +272,18 @@ export default function Profile() {
         <Ionicons name="log-out-outline" size={18} color="#fff" />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
+
+      {/* ✅ WEB: Custom Alert Modal */}
+      {Platform.OS === "web" && (
+        <WebAlert
+          visible={webAlert.visible}
+          title={webAlert.title}
+          message={webAlert.message}
+          onClose={() => {
+            setWebAlert({ visible: false, title: "", message: "" });
+          }}
+        />
+      )}
     </View>
   );
 }

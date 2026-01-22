@@ -61,15 +61,30 @@ exports.registerEmployee = async (req, res) => {
       });
     }
 
+    if (!managerId) {
+      return res.status(400).json({
+        message: "Manager ID is required",
+      });
+    }
+
     // Normalize
     email = email.toLowerCase().trim();
     name = name.trim();
 
-    // Prevent duplicate email
-    const exists = await User.findOne({ email });
+    // Check if employee already exists with same email AND managerId
+    // This allows same email to register with different managers
+    const exists = await User.findOne({ email, managerId, role: "employee" });
     if (exists) {
       return res.status(400).json({
-        message: "Employee already exists",
+        message: "Employee already registered with this manager",
+      });
+    }
+
+    // Check if email is already used by a manager (managers must have unique emails)
+    const managerExists = await User.findOne({ email, role: "manager" });
+    if (managerExists) {
+      return res.status(400).json({
+        message: "This email is already registered as a manager",
       });
     }
 
@@ -77,7 +92,7 @@ exports.registerEmployee = async (req, res) => {
       name,
       email,
       role: "employee",
-      managerId: managerId || null, // Optional for legacy support if needed, but should be sent by frontend
+      managerId: managerId,
     });
 
     return res.json({
@@ -91,6 +106,14 @@ exports.registerEmployee = async (req, res) => {
     });
   } catch (err) {
     console.error("REGISTER EMPLOYEE ERROR:", err);
+    
+    // Handle duplicate key error (from compound unique index)
+    if (err.code === 11000) {
+      return res.status(400).json({
+        message: "Employee already registered with this manager",
+      });
+    }
+    
     return res.status(500).json({
       message: "Employee registration failed",
     });

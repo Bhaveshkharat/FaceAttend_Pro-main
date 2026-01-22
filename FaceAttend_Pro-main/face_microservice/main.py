@@ -141,9 +141,9 @@ async def register_face(
                 )
 
         print(f"Registration Check: Best internal match for {userId} was {best_dup_id} with score {best_dup_score}")
-        print(f"Saving embedding to MongoDB for userId: {userId}")
+        print(f"Saving embedding to MongoDB for userId: {userId}, managerId: {managerId}")
         
-        # Save to MongoDB
+        # Save to MongoDB - Use composite key (userId + managerId) to allow same user with different managers
         update_data = {
             "userId": userId,
             "embedding": embedding,
@@ -152,8 +152,16 @@ async def register_face(
         if managerId:
             update_data["managerId"] = managerId
 
+        # Use composite key (userId + managerId) for upsert to allow same user with different managers
+        query = {"userId": userId}
+        if managerId:
+            query["managerId"] = managerId
+        else:
+            # If no managerId, still use userId only (for backward compatibility)
+            query["managerId"] = {"$exists": False}
+
         res = face_collection.update_one(
-            {"userId": userId},
+            query,
             {"$set": update_data},
             upsert=True
         )

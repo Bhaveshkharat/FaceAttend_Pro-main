@@ -106,14 +106,23 @@ class FaceService {
   /**
    * Delete face profile from MongoDB
    * @param {string} userId - ID of the user
+   * @param {string} managerId - ID of the manager (optional, for composite key)
    */
-  async deleteFace(userId) {
+  async deleteFace(userId, managerId = null) {
     try {
       const mongoose = require('mongoose');
       const db = mongoose.connection.useDb(process.env.MONGO_URI.split('/').pop().split('?')[0] || 'face_attendance');
       const faceCollection = db.collection('face_profiles');
 
-      const result = await faceCollection.deleteOne({ userId });
+      // Use composite key if managerId is provided, otherwise just userId (for backward compatibility)
+      const query = { userId };
+      if (managerId) {
+        query.managerId = managerId;
+      } else {
+        query.managerId = { $exists: false };
+      }
+
+      const result = await faceCollection.deleteOne(query);
       return { success: result.deletedCount > 0, message: result.deletedCount > 0 ? "Face deleted" : "Face not found" };
     } catch (error) {
       console.error('Delete Face Error:', error);
