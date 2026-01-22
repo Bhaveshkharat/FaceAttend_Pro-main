@@ -37,6 +37,17 @@ const getLocalDate = () => {
     .join("-");
 };
 
+// 🕒 HELPER: Get current time "HH:mm:ss" in IST (24h)
+const getCurrentTimeIST = () => {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
+};
+
 const START_TIME_LIMIT = "10:30:00"; // 10:30 AM
 const EARLY_OUT_LIMIT = "18:30:00";  // 06:30 PM
 const ABSENT_TIME_LIMIT = "19:00:00";  // 07:00 PM
@@ -563,5 +574,104 @@ exports.exportAttendance = async (req, res) => {
   } catch (err) {
     console.error("EXPORT ERROR:", err);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * ✅ MANUAL CHECK-IN (Web)
+ * Body: { userId: "<employeeId>" }
+ * NOTE: Prevents multiple check-ins for the same user on the same date.
+ */
+exports.manualCheckIn = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "userId is required" });
+    }
+
+    const today = getLocalDate();
+    const now = getCurrentTimeIST();
+
+    // Check if already has an attendance record for today
+    const existing = await Attendance.findOne({ userId, date: today });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Already checked in today",
+      });
+    }
+
+    const record = await Attendance.create({
+      userId,
+      date: today,
+      checkInTime: now,
+      checkOutTime: null,
+      status: "IN",
+      markedBy: "manual",
+    });
+
+    return res.json({
+      success: true,
+      type: "IN",
+      message: "Manual check-in successful",
+      time: record.checkInTime,
+    });
+  } catch (err) {
+    console.error("MANUAL CHECK-IN ERROR:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/**
+ * ✅ MANUAL CHECK-OUT (Web)
+ * Body: { userId: "<employeeId>" }
+ */
+exports.manualCheckOut = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "userId is required" });
+    }
+
+    const today = getLocalDate();
+    const now = getCurrentTimeIST();
+
+    const attendance = await Attendance.findOne({ userId, date: today });
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: "No check-in found for today",
+      });
+    }
+
+    if (attendance.status === "OUT") {
+      return res.status(409).json({
+        success: false,
+        message: "Already checked out today",
+      });
+    }
+
+    attendance.checkOutTime = now;
+    attendance.status = "OUT";
+    attendance.markedBy = "manual";
+    await attendance.save();
+
+    return res.json({
+      success: true,
+      type: "OUT",
+      message: "Manual check-out successful",
+      time: attendance.checkOutTime,
+    });
+  } catch (err) {
+    console.error("MANUAL CHECK-OUT ERROR:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
