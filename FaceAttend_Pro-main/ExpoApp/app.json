@@ -44,7 +44,8 @@
           "cameraPermission": "Allow FaceAttend Pro to access your camera for marking attendance.",
           "microphonePermission": "Allow FaceAttend Pro to access your microphone."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
