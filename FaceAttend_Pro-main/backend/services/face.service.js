@@ -99,7 +99,7 @@ class FaceService {
       else if (error.code === 'ENOTFOUND') errorMessage = `Host Not Found: The URL ${PYTHON_SERVICE_URL} is invalid.`;
       else errorMessage = error.message;
 
-      return { matched: false, error: errorMessage };
+      return { matched: false, message: errorMessage };
     }
   }
 

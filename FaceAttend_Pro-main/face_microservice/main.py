@@ -40,6 +40,12 @@ face_app = FaceAnalysis(name=MODEL_NAME)
 face_app.prepare(ctx_id=-1, det_size=(320, 320))
 print(f"Model {MODEL_NAME} loaded successfully")
 
+# 🔍 BLUR THRESHOLD
+# Variance of Laplacian method.
+# < 100 is typically considered blurry. 
+# Adjust based on camera quality. 
+BLUR_THRESHOLD = 50.0 
+
 def process_image(file_bytes):
     """Convert bytes to opencv format"""
     image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
@@ -52,6 +58,15 @@ def calculate_similarity(feat1, feat2):
     """Compute Cosine Similarity between two embeddings"""
     # vectors are typically normalized, but let's be safe
     return np.dot(feat1, feat2) / (np.linalg.norm(feat1) * np.linalg.norm(feat2))
+
+def calculate_blur_score(img_bgr):
+    """
+    Calculate the variance of the Laplacian of the image.
+    High detection accuracy requires clear images.
+    """
+    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    score = cv2.Laplacian(gray, cv2.CV_64F).var()
+    return score
 
 @app.get("/")
 def health_check():
@@ -69,6 +84,17 @@ async def register_face(
         
         img_bgr = process_image(contents)
         print("Image processed successfully")
+
+        # 🔍 BLUR CHECK
+        blur_score = calculate_blur_score(img_bgr)
+        print(f"Blur Score: {blur_score}")
+        
+        if blur_score < BLUR_THRESHOLD:
+             # Just a warning or rejection? For registration, we should be strict.
+             raise HTTPException(
+                 status_code=400, 
+                 detail=f"Image is too blurry (Score: {int(blur_score)}). Please keep the camera steady and try again."
+             )
 
         faces = face_app.get(img_bgr)
         print(f"Detected {len(faces)} faces")
@@ -151,6 +177,17 @@ async def verify_face(
         print(f"Received verification request (Manager: {managerId}), image size: {len(contents)} bytes")
             
         img_bgr = process_image(contents)
+
+        # 🔍 BLUR CHECK
+        blur_score = calculate_blur_score(img_bgr)
+        print(f"Blur Score: {blur_score}")
+
+        if blur_score < BLUR_THRESHOLD:
+             # Even for attendance, blurry images cause false negatives.
+             raise HTTPException(
+                 status_code=400, 
+                 detail=f"Image is too blurry (Score: {int(blur_score)}). Please keep the camera steady."
+             )
 
         faces = face_app.get(img_bgr)
 
