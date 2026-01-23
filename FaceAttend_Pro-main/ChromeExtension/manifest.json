@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Face Attendance Web",
+  "version": "1.0.0",
+  "description": "Face Attendance web app as a Chrome popup extension.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Face Attendance"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [],
+  "host_permissions": [
+    "https://faceattendpro-main-production.up.railway.app/*"
+  ]
+}
+

@@ -10,7 +10,6 @@ import {
   Platform,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
-import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -99,11 +98,10 @@ export default function History() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAttendance();
-    }, [loadAttendance])
-  );
+  // 🔄 Load data on mount and whenever the selected date changes
+  useEffect(() => {
+    loadAttendance();
+  }, [loadAttendance]);
 
   const filteredData = data.filter((item) =>
     item.user?.name?.toLowerCase().includes(search.toLowerCase()) ?? false
@@ -126,10 +124,38 @@ export default function History() {
         {/* Calendar */}
         <TouchableOpacity
           style={styles.dateBox}
-          onPress={() => setShowCalendar(true)}
+          onPress={() => {
+            // On native, open the DateTimePicker modal
+            if (Platform.OS !== "web") {
+              setShowCalendar(true);
+            }
+          }}
         >
           <Ionicons name="calendar" size={18} color="#2563eb" />
-          <Text style={styles.dateText}>{formattedDate}</Text>
+          {Platform.OS === "web" ? (
+            // 🖥️ Web: use native HTML date input for better browser support
+            <input
+              type="date"
+              value={formattedDate}
+              onChange={(e: any) => {
+                const value = e.target.value;
+                if (!value) return;
+                const [year, month, day] = value.split("-");
+                setDate(new Date(Number(year), Number(month) - 1, Number(day)));
+              }}
+              style={{
+                border: "none",
+                backgroundColor: "transparent",
+                color: "#1e3a8a",
+                fontWeight: 600,
+                fontSize: 14,
+                outline: "none",
+                cursor: "pointer",
+              } as any}
+            />
+          ) : (
+            <Text style={styles.dateText}>{formattedDate}</Text>
+          )}
         </TouchableOpacity>
 
         {/* Search */}
@@ -150,8 +176,8 @@ export default function History() {
         </TouchableOpacity>
       </View>
 
-      {/* Calendar Picker */}
-      {showCalendar && (
+      {/* Calendar Picker (native only) */}
+      {showCalendar && Platform.OS !== "web" && (
         <DateTimePicker
           value={date}
           mode="date"

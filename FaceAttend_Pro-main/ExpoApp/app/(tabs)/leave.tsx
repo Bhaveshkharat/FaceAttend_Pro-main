@@ -5,9 +5,9 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  Platform,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
-import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { api } from "@/services/api";
@@ -48,11 +48,10 @@ export default function Leave() {
     }
   }, [formattedDate]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadExceptions();
-    }, [loadExceptions])
-  );
+  // 🔄 Load data on mount and whenever the selected date changes
+  useEffect(() => {
+    loadExceptions();
+  }, [loadExceptions]);
 
   return (
     <View style={styles.container}>
@@ -62,14 +61,40 @@ export default function Leave() {
       <View style={styles.filterRow}>
         <TouchableOpacity
           style={styles.dateBox}
-          onPress={() => setShowCalendar(true)}
+          onPress={() => {
+            if (Platform.OS !== "web") {
+              setShowCalendar(true);
+            }
+          }}
         >
           <Ionicons name="calendar" size={18} color="#2563eb" />
-          <Text style={styles.dateText}>{formattedDate}</Text>
+          {Platform.OS === "web" ? (
+            <input
+              type="date"
+              value={formattedDate}
+              onChange={(e: any) => {
+                const value = e.target.value;
+                if (!value) return;
+                const [year, month, day] = value.split("-");
+                setDate(new Date(Number(year), Number(month) - 1, Number(day)));
+              }}
+              style={{
+                border: "none",
+                backgroundColor: "transparent",
+                color: "#1e3a8a",
+                fontWeight: 600,
+                fontSize: 16,
+                outline: "none",
+                cursor: "pointer",
+              } as any}
+            />
+          ) : (
+            <Text style={styles.dateText}>{formattedDate}</Text>
+          )}
         </TouchableOpacity>
       </View>
 
-      {showCalendar && (
+      {showCalendar && Platform.OS !== "web" && (
         <DateTimePicker
           value={date}
           mode="date"
