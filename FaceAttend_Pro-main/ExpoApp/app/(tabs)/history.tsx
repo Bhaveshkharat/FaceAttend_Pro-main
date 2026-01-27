@@ -8,8 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  AppState,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as FileSystem from "expo-file-system/legacy";
@@ -46,6 +48,7 @@ export default function History() {
     try {
       setLoading(true);
       const res = await api.get(`/attendance?date=${formattedDate}&managerId=${user?._id}`);
+      console.log("HISTORY - Date:", formattedDate, "Response:", res.data);
       setData(res.data?.data || []);
     } catch (err) {
       console.log("HISTORY ERROR:", err);
@@ -98,9 +101,37 @@ export default function History() {
     }
   };
 
+  // 🔄 Refresh when tab gains focus (important for Android)
+  useFocusEffect(
+    useCallback(() => {
+      loadAttendance();
+    }, [loadAttendance])
+  );
+
   // 🔄 Load data on mount and whenever the selected date changes
   useEffect(() => {
     loadAttendance();
+    
+    // For web: Refresh when tab becomes visible
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadAttendance();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+    
+    // For Android/iOS: Refresh when app comes to foreground
+    if (Platform.OS !== 'web') {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          loadAttendance();
+        }
+      });
+      return () => subscription.remove();
+    }
   }, [loadAttendance]);
 
   const filteredData = data.filter((item) =>
@@ -182,9 +213,15 @@ export default function History() {
           value={date}
           mode="date"
           display="default"
-          onChange={(_, selectedDate) => {
+          onChange={(event, selectedDate) => {
             setShowCalendar(false);
-            if (selectedDate) setDate(selectedDate);
+            if (selectedDate) {
+              setDate(selectedDate);
+              // Force reload after date change
+              setTimeout(() => {
+                loadAttendance();
+              }, 100);
+            }
           }}
         />
       )}

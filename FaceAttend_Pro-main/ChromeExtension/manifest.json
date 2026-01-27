@@ -5,7 +5,12 @@
   "description": "Face Attendance web app as a Chrome popup extension.",
   "action": {
     "default_popup": "index.html",
-    "default_title": "Face Attendance"
+    "default_title": "Face Attendance",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
   "icons": {
     "16": "icon16.png",
@@ -15,6 +20,12 @@
   "permissions": [],
   "host_permissions": [
     "https://faceattendpro-main-production.up.railway.app/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["expo/*", "mediapipe/*", "*.html", "*.js", "*.css"],
+      "matches": ["<all_urls>"]
+    }
   ]
 }
 

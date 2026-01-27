@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  AppState,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
 import { useFocusEffect } from "expo-router";
@@ -180,6 +181,32 @@ export default function Profile() {
       loadEmployees();
     }, [loadEmployees])
   );
+
+  // Refresh when component mounts and on visibility/app state change
+  useEffect(() => {
+    loadEmployees();
+    
+    // For web: Refresh when tab becomes visible
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadEmployees();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+    
+    // For Android/iOS: Refresh when app comes to foreground
+    if (Platform.OS !== 'web') {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          loadEmployees();
+        }
+      });
+      return () => subscription.remove();
+    }
+  }, [loadEmployees]);
 
   return (
     <View style={styles.container}>

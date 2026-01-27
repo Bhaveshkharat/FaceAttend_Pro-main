@@ -6,8 +6,10 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
+  AppState,
 } from "react-native";
 import { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { api } from "@/services/api";
@@ -39,18 +41,47 @@ export default function Leave() {
       setLoading(true);
       // Backend handles ?date=YYYY-MM-DD
       const res = await api.get(`/attendance/exceptions/today?date=${formattedDate}&managerId=${user?._id}`);
-      setData(res.data.data || []);
+      console.log("LEAVE PAGE - Date:", formattedDate, "Response:", res.data);
+      setData(res.data?.data || []);
     } catch (err) {
       console.log("LEAVE PAGE ERROR:", err);
       setData([]);
     } finally {
       setLoading(false);
     }
-  }, [formattedDate]);
+  }, [formattedDate, user?._id]);
+
+  // 🔄 Refresh when tab gains focus (important for Android)
+  useFocusEffect(
+    useCallback(() => {
+      loadExceptions();
+    }, [loadExceptions])
+  );
 
   // 🔄 Load data on mount and whenever the selected date changes
   useEffect(() => {
     loadExceptions();
+    
+    // For web: Refresh when tab becomes visible
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadExceptions();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+    
+    // For Android/iOS: Refresh when app comes to foreground
+    if (Platform.OS !== 'web') {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          loadExceptions();
+        }
+      });
+      return () => subscription.remove();
+    }
   }, [loadExceptions]);
 
   return (
@@ -99,9 +130,15 @@ export default function Leave() {
           value={date}
           mode="date"
           display="default"
-          onChange={(_, selectedDate) => {
+          onChange={(event, selectedDate) => {
             setShowCalendar(false);
-            if (selectedDate) setDate(selectedDate);
+            if (selectedDate) {
+              setDate(selectedDate);
+              // Force reload after date change
+              setTimeout(() => {
+                loadExceptions();
+              }, 100);
+            }
           }}
         />
       )}

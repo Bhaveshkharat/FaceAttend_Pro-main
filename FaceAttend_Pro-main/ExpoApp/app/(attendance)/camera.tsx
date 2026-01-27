@@ -128,6 +128,7 @@ export default function AttendanceCamera() {
           onClose={() => {
             setWebAlert({ visible: false, title: "", message: "" });
             if (webAlert.title === "Success") {
+              // Navigate back to dashboard - useEffect will refresh data
               router.replace("/(tabs)/dashboard");
             }
           }}

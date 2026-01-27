@@ -81,12 +81,27 @@ export default function FaceScanner({ onCapture, onCancel }: Props) {
                 container.appendChild(canvas);
 
                 // Load MediaPipe scripts
-                const scripts = [
-                    'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js',
-                    'https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js',
-                    'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js',
-                    'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js',
-                ];
+                // Check if running in Chrome extension (multiple detection methods)
+                const isChromeExtension = 
+                    window.location.protocol === 'chrome-extension:' ||
+                    window.location.protocol === 'chrome-extension://' ||
+                    typeof (window as any).chrome !== 'undefined' && 
+                    typeof (window as any).chrome.runtime !== 'undefined' ||
+                    window.location.href.startsWith('chrome-extension://');
+                
+                const scripts = isChromeExtension
+                    ? [
+                        '/mediapipe/camera_utils.js',
+                        '/mediapipe/control_utils.js',
+                        '/mediapipe/drawing_utils.js',
+                        '/mediapipe/face_mesh.js',
+                      ]
+                    : [
+                        'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js',
+                        'https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js',
+                        'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js',
+                        'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js',
+                      ];
 
                 await Promise.all(
                     scripts.map(

@@ -129,10 +129,24 @@ exports.markAttendanceByFace = async (req, res) => {
       return res.status(400).json({ message: "Image required" });
     }
 
-    const result = await faceService.recognizeFace(req.file.path);
+    // Extract managerId from query parameters to ensure only faces registered under this manager can check in
+    const { managerId } = req.query;
+    
+    const result = await faceService.recognizeFace(req.file.path, managerId);
 
     if (!result.matched) {
       return res.status(404).json({ success: false, message: "No such face registered" });
+    }
+
+    // Additional validation: Verify that the recognized user belongs to the manager (if managerId is provided)
+    if (managerId) {
+      const recognizedUser = await User.findById(result.userId);
+      if (!recognizedUser || recognizedUser.managerId?.toString() !== managerId) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Face not registered under this manager" 
+        });
+      }
     }
 
     const today = getLocalDate();

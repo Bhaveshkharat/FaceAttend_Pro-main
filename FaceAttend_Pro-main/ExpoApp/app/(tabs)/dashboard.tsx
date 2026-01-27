@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, AppState, Platform } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import AppHeader from "@/components/ui/AppHeader";
 import { api } from "@/services/api";
@@ -19,9 +19,11 @@ export default function Dashboard() {
   const loadStats = useCallback(async () => {
     try {
       const res = await api.get(`/attendance/stats/today?managerId=${user?._id}`);
-      setStats(res.data.data);
+      console.log("DASHBOARD STATS - Response:", res.data);
+      setStats(res.data?.data || { totalEmployees: 0, present: 0, out: 0 });
     } catch (err) {
       console.log("DASHBOARD STATS ERROR:", err);
+      setStats({ totalEmployees: 0, present: 0, out: 0 });
     }
   }, [user?._id]);
 
@@ -30,6 +32,32 @@ export default function Dashboard() {
       loadStats();
     }, [loadStats])
   );
+
+  // Refresh when component mounts and on visibility/app state change
+  useEffect(() => {
+    loadStats();
+    
+    // For web: Refresh when tab becomes visible
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadStats();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+    
+    // For Android/iOS: Refresh when app comes to foreground
+    if (Platform.OS !== 'web') {
+      const subscription = AppState.addEventListener('change', (nextAppState) => {
+        if (nextAppState === 'active') {
+          loadStats();
+        }
+      });
+      return () => subscription.remove();
+    }
+  }, [loadStats]);
 
   const analytics = [
     {
